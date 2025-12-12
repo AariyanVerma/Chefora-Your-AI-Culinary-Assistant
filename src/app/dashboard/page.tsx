@@ -2,7 +2,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
 import Image from 'next/image';
 import { LogoutButton } from '@/app/components/logoutbutton';
 
@@ -24,15 +25,32 @@ interface Profile {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
   const [stats, setStats] = useState({
     recipesCooked: 0,
     streak: 0,
     ingredientsExpiring: 3,
     weeklyMeals: 0,
   });
+
+  // Function to get time-based greeting
+  const getTimeBasedGreeting = () => {
+    const now = new Date();
+    const hour = now.getHours();
+    
+    if (hour >= 5 && hour < 12) {
+      return 'morning';
+    } else if (hour >= 12 && hour < 17) {
+      return 'afternoon';
+    } else {
+      return 'evening';
+    }
+  };
 
   useEffect(() => {
     async function fetchData() {
@@ -121,45 +139,170 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="dashboard-layout layer-content">
-        {/* Logo - Centered on entire screen */}
-        <div className="dashboard-logo-center-screen">
-          <Image
-            src="/assets/chefora-logo.svg"
-            alt="Chefora Logo"
-            width={80}
-            height={80}
-            className="dashboard-header-logo"
-            priority
-          />
-        </div>
-
-        {/* Sidebar */}
-        <aside className="dashboard-sidebar">
+      {/* Sidebar - Outside scrollable container */}
+      <aside 
+        className={`dashboard-sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}
+      >
           <div className="dashboard-brand">Chefora</div>
           <nav className="dashboard-nav">
-            <a href="/dashboard" className="dashboard-nav-link dashboard-nav-link-active">Dashboard</a>
-            <a href="/recipes" className="dashboard-nav-link">Recipes</a>
-            <a href="/ai-recipes" className="dashboard-nav-link">AI Recipe Generator</a>
-            <a href="/pantry" className="dashboard-nav-link">Pantry</a>
-            <a href="/shopping-list" className="dashboard-nav-link">Shopping List</a>
-            <a href="/meal-planner" className="dashboard-nav-link">Meal Planner</a>
-            <a href="/community" className="dashboard-nav-link">Community</a>
-            <a href="/settings" className="dashboard-nav-link">Settings</a>
+            <Link 
+              href="/dashboard" 
+              className={`dashboard-nav-link ${pathname === '/dashboard' ? 'dashboard-nav-link-active' : ''}`}
+              onClick={() => setSidebarOpen(false)}
+            >
+              Dashboard
+            </Link>
+            <Link 
+              href="/" 
+              className={`dashboard-nav-link ${pathname === '/' ? 'dashboard-nav-link-active' : ''}`}
+              onClick={() => setSidebarOpen(false)}
+            >
+              Recipes
+            </Link>
+            <Link 
+              href="/ai-recipes" 
+              className={`dashboard-nav-link ${pathname === '/ai-recipes' ? 'dashboard-nav-link-active' : ''}`}
+              onClick={() => setSidebarOpen(false)}
+            >
+              AI Recipe Generator
+            </Link>
+            <Link 
+              href="/pantry" 
+              className={`dashboard-nav-link ${pathname === '/pantry' ? 'dashboard-nav-link-active' : ''}`}
+              onClick={() => setSidebarOpen(false)}
+            >
+              Pantry
+            </Link>
+            <Link 
+              href="/shopping-list" 
+              className={`dashboard-nav-link ${pathname === '/shopping-list' ? 'dashboard-nav-link-active' : ''}`}
+              onClick={() => setSidebarOpen(false)}
+            >
+              Shopping List
+            </Link>
+            <Link 
+              href="/meal-planner" 
+              className={`dashboard-nav-link ${pathname === '/meal-planner' ? 'dashboard-nav-link-active' : ''}`}
+              onClick={() => setSidebarOpen(false)}
+            >
+              Meal Planner
+            </Link>
+            <Link 
+              href="/community" 
+              className={`dashboard-nav-link ${pathname === '/community' ? 'dashboard-nav-link-active' : ''}`}
+              onClick={() => setSidebarOpen(false)}
+            >
+              Community
+            </Link>
+            <Link 
+              href="/settings" 
+              className={`dashboard-nav-link ${pathname === '/settings' ? 'dashboard-nav-link-active' : ''}`}
+              onClick={() => setSidebarOpen(false)}
+            >
+              Settings
+            </Link>
           </nav>
+          
+          {/* Recent Activity Section */}
+          <div className="dashboard-sidebar-section">
+            <div className="dashboard-sidebar-section-header">
+              <span>Recent</span>
+            </div>
+            <div className="dashboard-recent-items">
+              <div className="dashboard-recent-item">
+                <span className="dashboard-recent-icon">📝</span>
+                <span className="dashboard-recent-text">Last Recipe</span>
+              </div>
+              <div className="dashboard-recent-item">
+                <span className="dashboard-recent-icon">🛒</span>
+                <span className="dashboard-recent-text">Shopping List</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Stats Section */}
+          <div className="dashboard-sidebar-section">
+            <div className="dashboard-sidebar-section-header">
+              <span>Quick Stats</span>
+            </div>
+            <div className="dashboard-quick-stats">
+              <div className="dashboard-quick-stat">
+                <span className="dashboard-quick-stat-value">{stats.recipesCooked}</span>
+                <span className="dashboard-quick-stat-label">Recipes</span>
+              </div>
+              <div className="dashboard-quick-stat">
+                <span className="dashboard-quick-stat-value">{stats.streak}</span>
+                <span className="dashboard-quick-stat-label">Day Streak</span>
+              </div>
+            </div>
+          </div>
         </aside>
 
+        {/* Sidebar Overlay */}
+        {sidebarOpen && (
+          <div 
+            className="dashboard-sidebar-overlay" 
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
+        {/* Hamburger Menu Button */}
+        <button 
+          className="dashboard-sidebar-toggle"
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          aria-label="Toggle sidebar"
+        >
+          <span className={`hamburger-line ${sidebarOpen ? 'active' : ''}`}></span>
+          <span className={`hamburger-line ${sidebarOpen ? 'active' : ''}`}></span>
+          <span className={`hamburger-line ${sidebarOpen ? 'active' : ''}`}></span>
+        </button>
+
+      <div className="dashboard-layout layer-content">
         {/* Main Content */}
         <main className="dashboard-main">
           {/* Top Header */}
           <header className="dashboard-top-header">
+            {/* Logo - Centered in header */}
+            <div className="dashboard-logo-center-screen">
+              <Link href="/dashboard">
+                <Image
+                  src="/assets/chefora-logo.svg"
+                  alt="Chefora Logo"
+                  width={80}
+                  height={80}
+                  className="dashboard-header-logo"
+                  priority
+                />
+              </Link>
+            </div>
             <div className="dashboard-search-wrapper">
               <div className="inputIcon" style={{ flex: 1 }}>
                 <i>🔎</i>
                 <input
                   className="input"
                   placeholder="Search or ask Chefora anything…"
+                  value={searchValue}
+                  onChange={(e) => setSearchValue(e.target.value)}
                 />
+                {searchValue && (
+                  <button 
+                    style={{
+                      position: 'absolute',
+                      right: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'rgba(230, 237, 246, 0.6)',
+                      fontSize: '18px',
+                      cursor: 'pointer',
+                      padding: '4px'
+                    }}
+                    onClick={() => setSearchValue('')}
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
             </div>
             <div className="dashboard-user-section">
@@ -311,7 +454,7 @@ export default function DashboardPage() {
                     <div className="dashboard-hero-left-section">
                       <div className="dashboard-greeting">
                         <h2 className="cardTitle" style={{ marginBottom: '6px', fontSize: 'clamp(16px, 2vw, 20px)' }}>
-                          Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {user.name?.split(' ')[0] || 'chef'} 👋
+                          Good {getTimeBasedGreeting()}, {user.name?.split(' ')[0] || 'chef'} 👋
                         </h2>
                         <p className="subtitle" style={{ marginBottom: '16px' }}>
                           You have {stats.ingredientsExpiring} ingredients expiring soon. Here&apos;s a quick dinner idea:
@@ -320,7 +463,19 @@ export default function DashboardPage() {
 
                       <div className="dashboard-recipe-preview">
                         <div className="dashboard-recipe-image">
-                          <div className="dashboard-recipe-image-placeholder">🍝</div>
+                          <Image
+                            src="https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=400&h=400&fit=crop&q=80"
+                            alt="Creamy Garlic Pasta"
+                            width={120}
+                            height={120}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              borderRadius: '12px',
+                            }}
+                            unoptimized
+                          />
                         </div>
                         <div className="dashboard-recipe-content">
                           <div className="cardTitle" style={{ marginBottom: '4px' }}>Creamy Garlic Pasta</div>

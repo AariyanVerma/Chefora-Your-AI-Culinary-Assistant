@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import IngredientAutocomplete from "@/components/IngredientAutocomplete";
 import DietAutocomplete from "@/components/DietAutocomplete";
 import CuisineAutocomplete from "@/components/CuisineAutocomplete";
@@ -104,6 +105,7 @@ function useMedia(query: string) {
 // ──────────────────────────────────────
 export default function Page() {
   const isCompact = useMedia("(max-width: 560px)");
+  const pathname = usePathname();
   const [tab, setTab] = useState<"browse" | "search" | "special">("browse");
 
   // AI form state
@@ -585,8 +587,7 @@ export default function Page() {
           }}
         >
           <Link
-            href="/"
-            onClick={() => setTab("browse")}
+            href="/dashboard"
             style={{ display: "block" }}
           >
             <img
@@ -611,43 +612,57 @@ export default function Page() {
             aria-label="Primary"
             style={{ display: "flex", gap: 8, marginLeft: "auto" }}
           >
-            <button
-              className={`tab tap-ripple ${tab === "browse" ? "active" : ""}`}
-              role="tab"
-              aria-selected={tab === "browse"}
-              onClick={() => setTab("browse")}
-            >
-              🍽️ <span style={{ marginLeft: 6 }}>Browse</span>
-            </button>
-
-            <button
-              className={`tab tap-ripple ${tab === "search" ? "active" : ""}`}
-              role="tab"
-              aria-selected={tab === "search"}
-              onClick={() => setTab("search")}
-            >
-              🔎 <span style={{ marginLeft: 6 }}>Search</span>
-            </button>
-
-            <button
-              className={`tab tap-ripple ${
-                tab === "special" ? "active" : ""
-              }`}
-              role="tab"
-              aria-selected={tab === "special"}
-              onClick={() => setTab("special")}
-            >
-              👨‍🍳 <span style={{ marginLeft: 6 }}>Chef’s Special</span>
-            </button>
-
             <Link
-              href="/ai-recipes"
-              className="tab tap-ripple"
+              href="/"
+              className={`tab tap-ripple ${pathname === "/" ? "active" : ""}`}
               style={{
                 display: "flex",
                 alignItems: "center",
                 fontWeight: 600,
                 padding: "10px 14px",
+                textDecoration: "none",
+              }}
+            >
+              🍽️ <span style={{ marginLeft: 6 }}>Browse</span>
+            </Link>
+
+            <Link
+              href="/"
+              className={`tab tap-ripple ${pathname === "/" ? "active" : ""}`}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                fontWeight: 600,
+                padding: "10px 14px",
+                textDecoration: "none",
+              }}
+            >
+              🔎 <span style={{ marginLeft: 6 }}>Search</span>
+            </Link>
+
+            <Link
+              href="/"
+              className={`tab tap-ripple ${pathname === "/" ? "active" : ""}`}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                fontWeight: 600,
+                padding: "10px 14px",
+                textDecoration: "none",
+              }}
+            >
+              👨‍🍳 <span style={{ marginLeft: 6 }}>Chef's Special</span>
+            </Link>
+
+            <Link
+              href="/ai-recipes"
+              className={`tab tap-ripple ${pathname === "/ai-recipes" ? "active" : ""}`}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                fontWeight: 600,
+                padding: "10px 14px",
+                textDecoration: "none",
               }}
             >
               🤖 <span style={{ marginLeft: 6 }}>AI Recipes</span>

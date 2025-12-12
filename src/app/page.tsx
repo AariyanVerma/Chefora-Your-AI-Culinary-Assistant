@@ -64,6 +64,19 @@ export default function Page() {
   const isCompact = useMedia("(max-width: 560px)");
 
   const [tab, setTab] = useState<"browse" | "search" | "special">("browse");
+  const [showParticleHero, setShowParticleHero] = useState(false);
+
+  // Check if particle hero has been shown in this session
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const hasShownHero = sessionStorage.getItem("chefora-particle-hero-shown");
+      if (!hasShownHero) {
+        setShowParticleHero(true);
+        // Mark as shown in sessionStorage
+        sessionStorage.setItem("chefora-particle-hero-shown", "true");
+      }
+    }
+  }, []);
   const [term, setTerm] = useState("flour");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -189,7 +202,7 @@ export default function Page() {
   return (
     <>
     {/* Morphing particles overlay – does NOT push content down */}
-    <CheforaParticleHero />
+    {showParticleHero && <CheforaParticleHero />}
 
       {/* Original app UI below */}
       <div className="bg-base" aria-hidden />
@@ -317,8 +330,7 @@ export default function Page() {
           }}
         >
           <Link
-            href="/"
-            onClick={() => setTab("browse")}
+            href="/dashboard"
             style={{
               display: "block",
             }}
