@@ -18,7 +18,7 @@ export default function FilteredResults({ items }: FilteredResultsProps) {
             <h3 className="pantry-filter-results-title">
               <span className="pantry-filter-results-icon">🔍</span>
               No Items Found
-            </h3>
+          </h3>
           </div>
           <div className="pantry-filter-results-content">
             <div className="pantry-filter-results-empty-message">
@@ -27,7 +27,7 @@ export default function FilteredResults({ items }: FilteredResultsProps) {
               </p>
               <p className="pantry-filter-results-empty-hint">
                 Try adjusting your filter criteria or click "Clear All" to see all items.
-              </p>
+          </p>
             </div>
           </div>
         </div>
@@ -45,18 +45,18 @@ export default function FilteredResults({ items }: FilteredResultsProps) {
           <h3 className="pantry-filter-results-title">
             <span className="pantry-filter-results-icon">✓</span>
             Filter Results
-          </h3>
+        </h3>
           <p className="pantry-filter-results-subtitle">
             Items that match all applied filter constraints
           </p>
         </div>
         <div className="pantry-filter-results-content">
           <div className="pantry-filter-results-grid">
-            {items.map((item) => (
+          {items.map((item) => (
               <div key={item.id} className="pantry-item-wrapper">
-                <PantryItemCard item={item} onUpdate={() => window.location.reload()} viewMode="grid" />
-              </div>
-            ))}
+              <PantryItemCard item={item} onUpdate={() => window.location.reload()} viewMode="grid" />
+            </div>
+          ))}
           </div>
         </div>
       </div>

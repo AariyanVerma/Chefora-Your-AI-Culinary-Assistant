@@ -420,7 +420,11 @@ export async function updateShoppingItem(
     await sql`UPDATE shopping_items SET image_url = ${imageUrl}, updated_at = NOW() WHERE id = ${itemId} AND user_id = ${user.id}`;
   }
 
-  revalidatePath('/shopping-list');
+  // Only revalidate if it's not just a purchased toggle (to avoid full page reload)
+  // For purchased toggles, the client will handle the UI update
+  if (!(Object.keys(data).length === 1 && 'purchased' in data)) {
+    revalidatePath('/shopping-list');
+  }
   return { success: true };
 }
 
