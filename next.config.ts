@@ -8,6 +8,13 @@ const nextConfig: NextConfig = {
     // Suppress source map warnings - these are harmless development warnings
     // from third-party packages like @neondatabase/serverless
   },
+  // Increase body size limit for server actions (default is 1MB)
+  // This is needed because base64 images can be large
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '10mb', // Allow up to 10MB for server actions
+    },
+  },
   images: {
     remotePatterns: [
       {

@@ -1,0 +1,1384 @@
+'use server';
+
+import { sql } from '@/lib/db';
+import { getCurrentUser, type SessionUser } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
+
+// ============================================
+// VALIDATION SCHEMAS
+// ============================================
+
+const createPostSchema = z.object({
+  title: z.string().min(1, 'Title is required').max(200),
+  caption: z.string().max(2000).optional(),
+  visibility: z.enum(['public', 'friends', 'private']).default('public'),
+  media_urls: z.array(z.string()).min(1, 'At least one image is required'),
+  ingredients: z.array(z.string()).optional(),
+  instructions: z.array(z.string()).optional(),
+  servings: z.number().int().positive().optional(),
+  prep_time_minutes: z.number().int().nonnegative().optional(),
+  cook_time_minutes: z.number().int().nonnegative().optional(),
+  total_time_minutes: z.number().int().nonnegative().optional(),
+  difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
+  cuisine: z.string().max(100).optional(),
+  diet_tags: z.array(z.string()).optional(),
+  tags: z.array(z.string()).optional(),
+});
+
+const createCommentSchema = z.object({
+  post_id: z.string().uuid(),
+  content: z.string().min(1, 'Comment cannot be empty').max(1000),
+  parent_comment_id: z.string().uuid().optional(),
+});
+
+const updateProfileSchema = z.object({
+  username: z.string().min(3, 'Username must be at least 3 characters').max(30),
+  display_name: z.string().min(1, 'Display name is required').max(100),
+  bio: z.string().max(500).optional(),
+  avatar_url: z.string().url().optional().or(z.literal('')),
+  cover_image_url: z.string().url().optional().or(z.literal('')),
+  location: z.string().max(100).optional(),
+  website: z.string().url().max(200).optional().or(z.literal('')),
+});
+
+// ============================================
+// TYPES
+// ============================================
+
+export type CommunityPost = {
+  id: string;
+  author_id: string;
+  author_username: string;
+  author_display_name: string;
+  author_avatar_url: string | null;
+  title: string;
+  caption: string | null;
+  visibility: string;
+  like_count: number;
+  comment_count: number;
+  repost_count: number;
+  save_count: number;
+  share_count: number;
+  created_at: string;
+  updated_at: string;
+  media_urls: string[];
+  recipe: {
+    ingredients: string[];
+    instructions: string[];
+    servings: number | null;
+    prep_time_minutes: number | null;
+    cook_time_minutes: number | null;
+    total_time_minutes: number | null;
+    difficulty: string | null;
+    cuisine: string | null;
+    diet_tags: string[];
+    tags: string[];
+  } | null;
+  is_liked: boolean;
+  is_saved: boolean;
+  is_reposted: boolean;
+  is_following_author: boolean;
+};
+
+export type CommunityComment = {
+  id: string;
+  post_id: string;
+  author_id: string;
+  author_username: string;
+  author_display_name: string;
+  author_avatar_url: string | null;
+  content: string;
+  parent_comment_id: string | null;
+  like_count: number;
+  created_at: string;
+  updated_at: string;
+  is_liked: boolean;
+  replies: CommunityComment[];
+};
+
+export type CommunityProfile = {
+  id: string;
+  user_id: string;
+  username: string;
+  display_name: string;
+  bio: string | null;
+  avatar_url: string | null;
+  cover_image_url: string | null;
+  location: string | null;
+  website: string | null;
+  verified: boolean;
+  follower_count: number;
+  following_count: number;
+  post_count: number;
+  created_at: string;
+  is_following: boolean;
+  is_friend: boolean;
+  friend_request_status: 'none' | 'pending' | 'accepted' | 'sent';
+  is_blocked: boolean;
+};
+
+// ============================================
+// PROFILE HELPERS
+// ============================================
+
+async function getOrCreateProfile(userId: string) {
+  const existing = await sql<{ id: string }>`
+    SELECT id FROM community_profiles WHERE user_id = ${userId}
+  `;
+
+  if (existing.rows.length > 0) {
+    return existing.rows[0].id;
+  }
+
+  // Get user info to create profile
+  const user = await sql<{ name: string; email: string }>`
+    SELECT name, email FROM users WHERE id = ${userId}
+  `;
+
+  if (user.rows.length === 0) {
+    throw new Error('User not found');
+  }
+
+  const username = user.rows[0].email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+  const displayName = user.rows[0].name;
+
+  // Ensure username is unique
+  let finalUsername = username;
+  let counter = 1;
+  while (true) {
+    const check = await sql<{ id: string }>`
+      SELECT id FROM community_profiles WHERE username = ${finalUsername}
+    `;
+    if (check.rows.length === 0) break;
+    finalUsername = `${username}${counter}`;
+    counter++;
+  }
+
+  const newProfile = await sql<{ id: string }>`
+    INSERT INTO community_profiles (user_id, username, display_name)
+    VALUES (${userId}, ${finalUsername}, ${displayName})
+    RETURNING id
+  `;
+
+  return newProfile.rows[0].id;
+}
+
+// ============================================
+// POST ACTIONS
+// ============================================
+
+// Simple test function to verify server actions work
+export async function testServerAction() {
+  try {
+    console.log('[testServerAction] Called successfully');
+    return { success: true, message: 'Server action is working' };
+  } catch (error: any) {
+    console.error('[testServerAction] Error:', error);
+    throw new Error('Test server action failed');
+  }
+}
+
+export async function createPost(data: any) {
+  // CRITICAL: This function MUST always return a response, never throw unhandled errors
+  // Wrap everything to prevent "Failed to fetch" errors
+  
+  // Log immediately to verify function is called
+  console.log('[createPost] ===== FUNCTION CALLED =====');
+  
+  try {
+    // Validate data exists
+    if (!data) {
+      console.error('[createPost] No data provided');
+      throw new Error('No data provided');
+    }
+    
+    console.log('[createPost] Data received - title:', data?.title);
+    console.log('[createPost] Data received - media_urls length:', data?.media_urls?.length);
+    
+    // Check if data is too large (base64 images can be huge)
+    try {
+      const dataSize = JSON.stringify(data).length;
+      console.log('[createPost] Data size:', dataSize, 'bytes');
+      if (dataSize > 10 * 1024 * 1024) { // 10MB limit
+        throw new Error('Data too large. Please reduce image size.');
+      }
+    } catch (sizeError: any) {
+      console.error('[createPost] Error checking data size:', sizeError);
+      // Continue anyway - might be a serialization issue but not fatal
+    }
+
+    // Validate user first - wrap in try-catch to handle any errors
+    let user: SessionUser | null = null;
+    try {
+      console.log('[createPost] Attempting to get current user...');
+      user = await getCurrentUser();
+      console.log('[createPost] User authenticated:', user?.id || 'null');
+    } catch (authError: unknown) {
+      const errorMsg = authError instanceof Error ? authError.message : String(authError);
+      console.error('[createPost] Auth error:', errorMsg);
+      // Don't throw here - check if user is null below
+    }
+    
+    if (!user) {
+      console.error('[createPost] No user found - throwing error');
+      throw new Error('You must be logged in to create a post');
+    }
+
+    // Validate input
+    let validated;
+    try {
+      console.log('[createPost] Validating input data...');
+      validated = createPostSchema.parse(data);
+      console.log('[createPost] Validation passed');
+    } catch (validationError: any) {
+      console.error('[createPost] Validation error:', validationError);
+      if (validationError instanceof z.ZodError) {
+        const firstError = validationError.errors[0];
+        const errorMsg = firstError?.message || 'Validation failed';
+        console.error('[createPost] Validation error message:', errorMsg);
+        throw new Error(errorMsg);
+      }
+      throw new Error('Invalid input data');
+    }
+
+    // Get or create profile
+    let profileId;
+    try {
+      profileId = await getOrCreateProfile(user.id);
+    } catch (profileError: any) {
+      console.error('Profile error:', profileError);
+      if (profileError?.message?.includes('does not exist') || profileError?.message?.includes('relation')) {
+        throw new Error('Database tables not found. Please run the migration SQL from src/app/community/migration.sql');
+      }
+      throw new Error('Failed to get user profile. Please try again.');
+    }
+
+    // Create post
+    let post;
+    try {
+      post = await sql<{ id: string }>`
+        INSERT INTO community_posts (author_id, title, caption, visibility)
+        VALUES (${user.id}, ${validated.title}, ${validated.caption || null}, ${validated.visibility})
+        RETURNING id
+      `;
+    } catch (dbError: any) {
+      console.error('Database error creating post:', dbError);
+      if (dbError?.message?.includes('does not exist') || dbError?.message?.includes('relation')) {
+        throw new Error('Database tables not found. Please run the migration SQL from src/app/community/migration.sql');
+      }
+      if (dbError?.message?.includes('connection') || dbError?.message?.includes('timeout')) {
+        throw new Error('Database connection failed. Please check your database configuration.');
+      }
+      throw new Error('Failed to create post in database. Please try again.');
+    }
+
+    if (!post.rows || post.rows.length === 0) {
+      throw new Error('Failed to create post: No ID returned');
+    }
+
+    const postId = post.rows[0].id;
+
+    // Add media
+    try {
+      for (let i = 0; i < validated.media_urls.length; i++) {
+        await sql`
+          INSERT INTO community_post_media (post_id, media_url, order_index)
+          VALUES (${postId}, ${validated.media_urls[i]}, ${i})
+        `;
+      }
+    } catch (mediaError: any) {
+      console.error('Error adding media:', mediaError);
+      // Continue even if media fails - post is already created
+    }
+
+    // Add recipe if provided
+    if (validated.ingredients || validated.instructions) {
+      try {
+        await sql`
+          INSERT INTO community_recipes (
+            post_id, ingredients, instructions, servings,
+            prep_time_minutes, cook_time_minutes, total_time_minutes,
+            difficulty, cuisine, diet_tags, tags
+          )
+          VALUES (
+            ${postId},
+            ${JSON.stringify(validated.ingredients || [])}::jsonb,
+            ${JSON.stringify(validated.instructions || [])}::jsonb,
+            ${validated.servings || null},
+            ${validated.prep_time_minutes || null},
+            ${validated.cook_time_minutes || null},
+            ${validated.total_time_minutes || null},
+            ${validated.difficulty || null},
+            ${validated.cuisine || null},
+            ${validated.diet_tags || []},
+            ${validated.tags || []}
+          )
+        `;
+      } catch (recipeError: any) {
+        console.error('Error adding recipe:', recipeError);
+        // Continue even if recipe fails - post is already created
+      }
+    }
+
+    // Update post count
+    try {
+      await sql`
+        UPDATE community_profiles SET post_count = post_count + 1 WHERE user_id = ${user.id}
+      `;
+    } catch (countError: any) {
+      console.error('Error updating post count:', countError);
+      // Continue even if count update fails
+    }
+
+    revalidatePath('/community');
+    
+    console.log('[createPost] Post created successfully:', postId);
+    
+    return { success: true, post_id: postId };
+  } catch (error: unknown) {
+    // CRITICAL: This catch block MUST handle all errors to prevent "Failed to fetch"
+    console.error('[createPost] ===== ERROR CAUGHT =====');
+    console.error('[createPost] Error type:', typeof error);
+    console.error('[createPost] Error:', error);
+    
+    // Extract a safe, serializable error message
+    let errorMessage = 'Failed to create post. Please try again.';
+    
+    // Safely extract error message - be very defensive here
+    try {
+      if (error instanceof Error) {
+        errorMessage = error.message || 'An error occurred';
+      } else if (error && typeof error === 'object') {
+        if ('message' in error) {
+          errorMessage = String(error.message);
+        } else if ('error' in error) {
+          errorMessage = String(error.error);
+        }
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+    } catch (extractError) {
+      // If we can't extract the message, use default
+      console.error('[createPost] Could not extract error message:', extractError);
+      errorMessage = 'An unexpected error occurred. Please try again.';
+    }
+    
+    // Ensure the error message is not too long
+    if (errorMessage.length > 200) {
+      errorMessage = errorMessage.substring(0, 200) + '...';
+    }
+    
+    // Log the final error message
+    console.error('[createPost] Final error message:', errorMessage);
+    console.error('[createPost] ===== END ERROR =====');
+    
+    // IMPORTANT: In Next.js Server Actions, we MUST throw an Error object
+    // But we need to ensure it's serializable. Create a new plain Error.
+    const serializableError = new Error(errorMessage);
+    
+    // Set the stack to undefined to avoid serialization issues
+    if (serializableError.stack) {
+      serializableError.stack = undefined;
+    }
+    
+    throw serializableError;
+  }
+}
+
+export async function getPosts(params: {
+  sort?: 'new' | 'trending' | 'following';
+  filter_cuisine?: string;
+  filter_diet?: string[];
+  filter_difficulty?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}): Promise<CommunityPost[]> {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  const {
+    sort = 'new',
+    filter_cuisine,
+    filter_diet,
+    filter_difficulty,
+    search,
+    page = 1,
+    limit = 20,
+  } = params;
+
+  const offset = (page - 1) * limit;
+
+  // Build search pattern if needed  
+  const searchPattern = search ? `%${search}%` : null;
+
+  // @vercel/postgres has issues with nested SQL fragments
+  // Solution: Fetch posts with basic filters, then apply complex filters in memory if needed
+  // Or build completely separate queries - but that's verbose
+  // For MVP, let's use a simpler approach: fetch all visible posts, filter in memory for complex cases
+  
+  // First, get all posts that pass basic visibility checks
+  // Calculate actual counts from tables to ensure accuracy
+  const allPosts = await sql`
+    SELECT 
+      p.*,
+      prof.username as author_username,
+      prof.display_name as author_display_name,
+      prof.avatar_url as author_avatar_url,
+      COALESCE(
+        json_agg(pm.media_url ORDER BY pm.order_index) FILTER (WHERE pm.media_url IS NOT NULL),
+        '[]'::json
+      ) as media_urls,
+      CASE WHEN EXISTS (SELECT 1 FROM community_likes l WHERE l.post_id = p.id AND l.user_id = ${user.id}) THEN true ELSE false END as is_liked,
+      CASE WHEN EXISTS (SELECT 1 FROM community_bookmarks b WHERE b.post_id = p.id AND b.user_id = ${user.id}) THEN true ELSE false END as is_saved,
+      CASE WHEN EXISTS (SELECT 1 FROM community_reposts r WHERE r.original_post_id = p.id AND r.user_id = ${user.id}) THEN true ELSE false END as is_reposted,
+      CASE WHEN EXISTS (SELECT 1 FROM community_follows f WHERE f.follower_id = ${user.id} AND f.following_id = p.author_id) THEN true ELSE false END as is_following_author,
+      (SELECT COUNT(*)::integer FROM community_likes WHERE post_id = p.id) as actual_like_count,
+      (SELECT COUNT(*)::integer FROM community_reposts WHERE original_post_id = p.id) as actual_repost_count,
+      (SELECT COUNT(*)::integer FROM community_comments WHERE post_id = p.id) as actual_comment_count,
+      (SELECT COUNT(*)::integer FROM community_bookmarks WHERE post_id = p.id) as actual_save_count,
+      r.ingredients, r.instructions, r.servings, r.prep_time_minutes, r.cook_time_minutes,
+      r.total_time_minutes, r.difficulty, r.cuisine, r.diet_tags, r.tags
+    FROM community_posts p
+    INNER JOIN community_profiles prof ON prof.user_id = p.author_id
+    LEFT JOIN community_post_media pm ON pm.post_id = p.id
+    LEFT JOIN community_recipes r ON r.post_id = p.id
+    WHERE NOT EXISTS (SELECT 1 FROM community_blocks b WHERE (b.blocker_id = ${user.id} AND b.blocked_id = p.author_id) OR (b.blocked_id = ${user.id} AND b.blocker_id = p.author_id))
+    GROUP BY p.id, prof.username, prof.display_name, prof.avatar_url, r.ingredients, r.instructions,
+      r.servings, r.prep_time_minutes, r.cook_time_minutes, r.total_time_minutes, r.difficulty, r.cuisine, r.diet_tags, r.tags
+    ORDER BY p.created_at DESC
+    LIMIT ${limit * 3} OFFSET 0
+  `;
+
+  // Filter in memory for complex filters
+  let filtered = allPosts.rows;
+
+  // Apply following filter
+  if (sort === 'following') {
+    const followingIds = await sql<{ following_id: string }>`
+      SELECT following_id FROM community_follows WHERE follower_id = ${user.id}
+    `;
+    const followingSet = new Set(followingIds.rows.map(r => r.following_id));
+    filtered = filtered.filter(p => followingSet.has(p.author_id));
+  }
+
+  // Apply cuisine filter
+  if (filter_cuisine) {
+    filtered = filtered.filter(p => p.cuisine === filter_cuisine);
+  }
+
+  // Apply difficulty filter
+  if (filter_difficulty) {
+    filtered = filtered.filter(p => p.difficulty === filter_difficulty);
+  }
+
+  // Apply diet filter
+  if (filter_diet && filter_diet.length > 0) {
+    filtered = filtered.filter(p => {
+      const dietTags = p.diet_tags || [];
+      return filter_diet.some(d => dietTags.includes(d));
+    });
+  }
+
+  // Apply search filter
+  if (searchPattern) {
+    const searchLower = searchPattern.replace(/%/g, '').toLowerCase();
+    filtered = filtered.filter(p => 
+      p.title?.toLowerCase().includes(searchLower) || 
+      p.caption?.toLowerCase().includes(searchLower)
+    );
+  }
+
+  // Apply sorting - use actual counts for trending
+  if (sort === 'trending') {
+    filtered.sort((a, b) => {
+      const likeA = a.actual_like_count ?? a.like_count ?? 0;
+      const commentA = a.actual_comment_count ?? a.comment_count ?? 0;
+      const repostA = a.actual_repost_count ?? a.repost_count ?? 0;
+      const likeB = b.actual_like_count ?? b.like_count ?? 0;
+      const commentB = b.actual_comment_count ?? b.comment_count ?? 0;
+      const repostB = b.actual_repost_count ?? b.repost_count ?? 0;
+      const scoreA = likeA * 2 + commentA + repostA;
+      const scoreB = likeB * 2 + commentB + repostB;
+      return scoreB - scoreA;
+    });
+  } else {
+    filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }
+
+  // Apply pagination
+  const paginated = filtered.slice(offset, offset + limit);
+
+  // Return in the same format as before, using actual counts
+  const result = { rows: paginated };
+  
+  return result.rows.map((row: any) => ({
+    id: row.id,
+    author_id: row.author_id,
+    author_username: row.author_username,
+    author_display_name: row.author_display_name,
+    author_avatar_url: row.author_avatar_url,
+    title: row.title,
+    caption: row.caption,
+    visibility: row.visibility,
+    like_count: row.actual_like_count ?? row.like_count ?? 0,
+    comment_count: row.actual_comment_count ?? row.comment_count ?? 0,
+    repost_count: row.actual_repost_count ?? row.repost_count ?? 0,
+    save_count: row.actual_save_count ?? row.save_count ?? 0,
+    share_count: row.actual_share_count ?? row.share_count ?? 0,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    media_urls: Array.isArray(row.media_urls) ? row.media_urls : [],
+    recipe: row.ingredients ? {
+      ingredients: row.ingredients || [],
+      instructions: row.instructions || [],
+      servings: row.servings,
+      prep_time_minutes: row.prep_time_minutes,
+      cook_time_minutes: row.cook_time_minutes,
+      total_time_minutes: row.total_time_minutes,
+      difficulty: row.difficulty,
+      cuisine: row.cuisine,
+      diet_tags: row.diet_tags || [],
+      tags: row.tags || [],
+    } : null,
+    is_liked: row.is_liked,
+    is_saved: row.is_saved,
+    is_reposted: row.is_reposted || false,
+    is_following_author: row.is_following_author,
+  }));
+}
+
+export async function getPostLikeCount(postId: string): Promise<{ like_count: number; is_liked: boolean } | null> {
+  const user = await getCurrentUser();
+  if (!user) return null;
+
+  const result = await sql<{ like_count: number; is_liked: boolean }>`
+    SELECT 
+      COALESCE(like_count, 0) as like_count,
+      EXISTS (SELECT 1 FROM community_likes WHERE user_id = ${user.id} AND post_id = ${postId}) as is_liked
+    FROM community_posts 
+    WHERE id = ${postId}
+  `;
+
+  if (result.rows.length === 0) return null;
+  return {
+    like_count: result.rows[0].like_count || 0,
+    is_liked: result.rows[0].is_liked || false
+  };
+}
+
+export async function getPost(postId: string): Promise<CommunityPost | null> {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  const result = await sql`
+    SELECT 
+      p.*,
+      prof.username as author_username,
+      prof.display_name as author_display_name,
+      prof.avatar_url as author_avatar_url,
+      COALESCE(
+        json_agg(pm.media_url ORDER BY pm.order_index) FILTER (WHERE pm.media_url IS NOT NULL),
+        '[]'::json
+      ) as media_urls,
+      CASE WHEN EXISTS (SELECT 1 FROM community_likes l WHERE l.post_id = p.id AND l.user_id = ${user.id}) THEN true ELSE false END as is_liked,
+      CASE WHEN EXISTS (SELECT 1 FROM community_bookmarks b WHERE b.post_id = p.id AND b.user_id = ${user.id}) THEN true ELSE false END as is_saved,
+      CASE WHEN EXISTS (SELECT 1 FROM community_reposts r WHERE r.original_post_id = p.id AND r.user_id = ${user.id}) THEN true ELSE false END as is_reposted,
+      CASE WHEN EXISTS (SELECT 1 FROM community_follows f WHERE f.follower_id = ${user.id} AND f.following_id = p.author_id) THEN true ELSE false END as is_following_author,
+      (SELECT COUNT(*)::integer FROM community_likes WHERE post_id = p.id) as actual_like_count,
+      (SELECT COUNT(*)::integer FROM community_reposts WHERE original_post_id = p.id) as actual_repost_count,
+      (SELECT COUNT(*)::integer FROM community_comments WHERE post_id = p.id) as actual_comment_count,
+      (SELECT COUNT(*)::integer FROM community_bookmarks WHERE post_id = p.id) as actual_save_count,
+      (SELECT COUNT(*)::integer FROM community_shares WHERE post_id = p.id) as actual_share_count,
+      r.ingredients, r.instructions, r.servings, r.prep_time_minutes, r.cook_time_minutes,
+      r.total_time_minutes, r.difficulty, r.cuisine, r.diet_tags, r.tags
+    FROM community_posts p
+    INNER JOIN community_profiles prof ON prof.user_id = p.author_id
+    LEFT JOIN community_post_media pm ON pm.post_id = p.id
+    LEFT JOIN community_recipes r ON r.post_id = p.id
+    WHERE p.id = ${postId}
+      AND NOT EXISTS (SELECT 1 FROM community_blocks b WHERE (b.blocker_id = ${user.id} AND b.blocked_id = p.author_id) OR (b.blocked_id = ${user.id} AND b.blocker_id = p.author_id))
+    GROUP BY p.id, prof.username, prof.display_name, prof.avatar_url, r.ingredients, r.instructions,
+      r.servings, r.prep_time_minutes, r.cook_time_minutes, r.total_time_minutes, r.difficulty, r.cuisine, r.diet_tags, r.tags
+  `;
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  const row = result.rows[0];
+  
+  // Use actual counts from tables, fallback to cached counts if actual counts are null
+  const likeCount = row.actual_like_count ?? row.like_count ?? 0;
+  const repostCount = row.actual_repost_count ?? row.repost_count ?? 0;
+  const commentCount = row.actual_comment_count ?? row.comment_count ?? 0;
+  const saveCount = row.actual_save_count ?? row.save_count ?? 0;
+  const shareCount = row.actual_share_count ?? row.share_count ?? 0;
+  
+  // Update cached counts if they're out of sync (async, don't wait)
+  if (row.actual_like_count !== row.like_count || row.actual_repost_count !== row.repost_count || row.actual_share_count !== row.share_count) {
+    sql`
+      UPDATE community_posts 
+      SET 
+        like_count = ${row.actual_like_count ?? 0},
+        repost_count = ${row.actual_repost_count ?? 0},
+        comment_count = ${row.actual_comment_count ?? 0},
+        save_count = ${row.actual_save_count ?? 0},
+        share_count = ${row.actual_share_count ?? 0}
+      WHERE id = ${postId}
+    `.catch(err => console.error('Failed to sync counts:', err));
+  }
+  
+  return {
+    id: row.id,
+    author_id: row.author_id,
+    author_username: row.author_username,
+    author_display_name: row.author_display_name,
+    author_avatar_url: row.author_avatar_url,
+    title: row.title,
+    caption: row.caption,
+    visibility: row.visibility,
+    like_count: likeCount,
+    comment_count: commentCount,
+    repost_count: repostCount,
+    save_count: saveCount,
+    share_count: shareCount,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    media_urls: Array.isArray(row.media_urls) ? row.media_urls : [],
+    recipe: row.ingredients ? {
+      ingredients: row.ingredients || [],
+      instructions: row.instructions || [],
+      servings: row.servings,
+      prep_time_minutes: row.prep_time_minutes,
+      cook_time_minutes: row.cook_time_minutes,
+      total_time_minutes: row.total_time_minutes,
+      difficulty: row.difficulty,
+      cuisine: row.cuisine,
+      diet_tags: row.diet_tags || [],
+      tags: row.tags || [],
+    } : null,
+    is_liked: row.is_liked,
+    is_saved: row.is_saved,
+    is_reposted: row.is_reposted || false,
+    is_following_author: row.is_following_author,
+  };
+}
+
+export async function updatePost(
+  postId: string,
+  data: {
+    title?: string;
+    caption?: string;
+    visibility?: 'public' | 'friends' | 'private';
+    media_urls?: string[];
+    ingredients?: string[];
+    instructions?: string[];
+    servings?: number;
+    prep_time_minutes?: number;
+    cook_time_minutes?: number;
+    total_time_minutes?: number;
+    difficulty?: 'easy' | 'medium' | 'hard';
+    cuisine?: string;
+    diet_tags?: string[];
+    tags?: string[];
+  }
+) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  // Verify ownership
+  const post = await sql<{ author_id: string }>`
+    SELECT author_id FROM community_posts WHERE id = ${postId}
+  `;
+
+  if (post.rows.length === 0) {
+    throw new Error('Post not found');
+  }
+
+  if (post.rows[0].author_id !== user.id) {
+    throw new Error('Unauthorized');
+  }
+
+  // Update post
+  if (data.title || data.caption !== undefined || data.visibility) {
+    await sql`
+      UPDATE community_posts
+      SET 
+        title = COALESCE(${data.title || null}, title),
+        caption = COALESCE(${data.caption !== undefined ? data.caption : null}, caption),
+        visibility = COALESCE(${data.visibility || null}, visibility),
+        updated_at = NOW()
+      WHERE id = ${postId}
+    `;
+  }
+
+  // Update media if provided
+  if (data.media_urls && data.media_urls.length > 0) {
+    // Delete old media
+    await sql`DELETE FROM community_post_media WHERE post_id = ${postId}`;
+    
+    // Add new media
+    for (let i = 0; i < data.media_urls.length; i++) {
+      await sql`
+        INSERT INTO community_post_media (post_id, media_url, order_index)
+        VALUES (${postId}, ${data.media_urls[i]}, ${i})
+      `;
+    }
+  }
+
+  // Update recipe if provided
+  if (data.ingredients || data.instructions) {
+    const existing = await sql<{ id: string }>`
+      SELECT id FROM community_recipes WHERE post_id = ${postId}
+    `;
+
+    if (existing.rows.length > 0) {
+      // Update existing recipe
+      await sql`
+        UPDATE community_recipes
+        SET 
+          ingredients = COALESCE(${data.ingredients ? JSON.stringify(data.ingredients) : null}::jsonb, ingredients),
+          instructions = COALESCE(${data.instructions ? JSON.stringify(data.instructions) : null}::jsonb, instructions),
+          servings = COALESCE(${data.servings || null}, servings),
+          prep_time_minutes = COALESCE(${data.prep_time_minutes || null}, prep_time_minutes),
+          cook_time_minutes = COALESCE(${data.cook_time_minutes || null}, cook_time_minutes),
+          total_time_minutes = COALESCE(${data.total_time_minutes || null}, total_time_minutes),
+          difficulty = COALESCE(${data.difficulty || null}, difficulty),
+          cuisine = COALESCE(${data.cuisine || null}, cuisine),
+          diet_tags = COALESCE(${data.diet_tags || null}, diet_tags),
+          tags = COALESCE(${data.tags || null}, tags),
+          updated_at = NOW()
+        WHERE post_id = ${postId}
+      `;
+    } else {
+      // Create new recipe
+      await sql`
+        INSERT INTO community_recipes (
+          post_id, ingredients, instructions, servings,
+          prep_time_minutes, cook_time_minutes, total_time_minutes,
+          difficulty, cuisine, diet_tags, tags
+        )
+        VALUES (
+          ${postId},
+          ${JSON.stringify(data.ingredients || [])}::jsonb,
+          ${JSON.stringify(data.instructions || [])}::jsonb,
+          ${data.servings || null},
+          ${data.prep_time_minutes || null},
+          ${data.cook_time_minutes || null},
+          ${data.total_time_minutes || null},
+          ${data.difficulty || null},
+          ${data.cuisine || null},
+          ${data.diet_tags || []},
+          ${data.tags || []}
+        )
+      `;
+    }
+  }
+
+  revalidatePath('/community');
+  revalidatePath(`/community/p/${postId}`);
+  return { success: true };
+}
+
+export async function deletePost(postId: string) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  // Verify ownership
+  const post = await sql<{ author_id: string }>`
+    SELECT author_id FROM community_posts WHERE id = ${postId}
+  `;
+
+  if (post.rows.length === 0) {
+    throw new Error('Post not found');
+  }
+
+  if (post.rows[0].author_id !== user.id) {
+    throw new Error('Unauthorized');
+  }
+
+  // Hard delete - delete all related records explicitly
+  // Note: Most have CASCADE, but we delete explicitly to ensure cleanup
+  // Delete in order to avoid foreign key issues: notifications first (references post), then others
+  await sql`DELETE FROM community_notifications WHERE post_id = ${postId}`;
+  // Comments, likes, bookmarks, reposts, media, and recipes will cascade when post is deleted
+  // But we delete them explicitly to be safe
+  await sql`DELETE FROM community_likes WHERE post_id = ${postId}`;
+  await sql`DELETE FROM community_likes WHERE comment_id IN (SELECT id FROM community_comments WHERE post_id = ${postId})`;
+  await sql`DELETE FROM community_comments WHERE post_id = ${postId}`;
+  await sql`DELETE FROM community_bookmarks WHERE post_id = ${postId}`;
+  await sql`DELETE FROM community_reposts WHERE original_post_id = ${postId}`;
+  await sql`DELETE FROM community_shares WHERE post_id = ${postId}`;
+  await sql`DELETE FROM community_post_media WHERE post_id = ${postId}`;
+  await sql`DELETE FROM community_recipes WHERE post_id = ${postId}`;
+  // Finally delete the post (this will cascade any remaining references)
+  await sql`DELETE FROM community_posts WHERE id = ${postId}`;
+
+  revalidatePath('/community');
+  revalidatePath(`/community/p/${postId}`);
+  return { success: true };
+}
+
+// ============================================
+// LIKE ACTIONS
+// ============================================
+
+export async function toggleLikePost(postId: string) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  const existing = await sql<{ id: string }>`
+    SELECT id FROM community_likes WHERE user_id = ${user.id} AND post_id = ${postId}
+  `;
+
+  if (existing.rows.length > 0) {
+    // Unlike
+    await sql`
+      DELETE FROM community_likes WHERE user_id = ${user.id} AND post_id = ${postId}
+    `;
+  } else {
+    // Like
+    await sql`
+      INSERT INTO community_likes (user_id, post_id)
+      VALUES (${user.id}, ${postId})
+    `;
+
+    // Create notification (if not own post)
+    const post = await sql<{ author_id: string }>`
+      SELECT author_id FROM community_posts WHERE id = ${postId}
+    `;
+    if (post.rows.length > 0 && post.rows[0].author_id !== user.id) {
+      await sql`
+        INSERT INTO community_notifications (user_id, type, actor_id, post_id)
+        VALUES (${post.rows[0].author_id}, 'like', ${user.id}, ${postId})
+        ON CONFLICT DO NOTHING
+      `;
+    }
+  }
+
+  // Get the updated like count from the database - calculate actual count from likes table
+  const countResult = await sql<{ like_count: number; is_liked: boolean }>`
+    SELECT 
+      (SELECT COUNT(*)::integer FROM community_likes WHERE post_id = ${postId}) as like_count,
+      EXISTS (SELECT 1 FROM community_likes WHERE user_id = ${user.id} AND post_id = ${postId}) as is_liked
+    FROM community_posts 
+    WHERE id = ${postId}
+  `;
+
+  const likeCount = countResult.rows[0]?.like_count ?? 0;
+  const isLiked = countResult.rows[0]?.is_liked ?? false;
+  
+  // Update cached count in posts table
+  await sql`
+    UPDATE community_posts 
+    SET like_count = ${likeCount}
+    WHERE id = ${postId}
+  `;
+
+  revalidatePath('/community');
+  revalidatePath(`/community/p/${postId}`);
+  
+  return { 
+    success: true,
+    like_count: Math.max(0, likeCount), // Ensure never negative
+    is_liked: isLiked
+  };
+}
+
+export async function toggleSavePost(postId: string) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  const existing = await sql<{ id: string }>`
+    SELECT id FROM community_bookmarks WHERE user_id = ${user.id} AND post_id = ${postId}
+  `;
+
+  if (existing.rows.length > 0) {
+    await sql`
+      DELETE FROM community_bookmarks WHERE user_id = ${user.id} AND post_id = ${postId}
+    `;
+  } else {
+    await sql`
+      INSERT INTO community_bookmarks (user_id, post_id)
+      VALUES (${user.id}, ${postId})
+    `;
+  }
+
+  revalidatePath('/community');
+  revalidatePath(`/community/p/${postId}`);
+  return { success: true };
+}
+
+// ============================================
+// COMMENT ACTIONS
+// ============================================
+
+export async function createComment(data: z.infer<typeof createCommentSchema>) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  const validated = createCommentSchema.parse(data);
+
+  const comment = await sql<{ id: string }>`
+    INSERT INTO community_comments (post_id, author_id, content, parent_comment_id)
+    VALUES (${validated.post_id}, ${user.id}, ${validated.content}, ${validated.parent_comment_id || null})
+    RETURNING id
+  `;
+
+  // Create notification (if not own post)
+  const post = await sql<{ author_id: string }>`
+    SELECT author_id FROM community_posts WHERE id = ${validated.post_id}
+  `;
+  if (post.rows.length > 0 && post.rows[0].author_id !== user.id) {
+    await sql`
+      INSERT INTO community_notifications (user_id, type, actor_id, post_id, comment_id)
+      VALUES (${post.rows[0].author_id}, 'comment', ${user.id}, ${validated.post_id}, ${comment.rows[0].id})
+      ON CONFLICT DO NOTHING
+    `;
+  }
+
+  // Get actual comment count after creation
+  const countResult = await sql<{ comment_count: number }>`
+    SELECT COUNT(*)::integer as comment_count
+    FROM community_comments 
+    WHERE post_id = ${validated.post_id}
+  `;
+
+  const commentCount = countResult.rows[0]?.comment_count ?? 0;
+
+  // Update cached count
+  await sql`
+    UPDATE community_posts 
+    SET comment_count = ${commentCount}
+    WHERE id = ${validated.post_id}
+  `;
+
+  revalidatePath(`/community/p/${validated.post_id}`);
+  return { 
+    success: true, 
+    comment_id: comment.rows[0].id,
+    comment_count: commentCount
+  };
+}
+
+export async function getComments(postId: string): Promise<CommunityComment[]> {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  const result = await sql`
+    SELECT
+      c.*,
+      prof.username as author_username,
+      prof.display_name as author_display_name,
+      prof.avatar_url as author_avatar_url,
+      CASE WHEN EXISTS (SELECT 1 FROM community_likes l WHERE l.comment_id = c.id AND l.user_id = ${user.id}) THEN true ELSE false END as is_liked
+    FROM community_comments c
+    INNER JOIN community_profiles prof ON prof.user_id = c.author_id
+    WHERE c.post_id = ${postId}
+      AND NOT EXISTS (SELECT 1 FROM community_blocks b WHERE (b.blocker_id = ${user.id} AND b.blocked_id = c.author_id) OR (b.blocked_id = ${user.id} AND b.blocker_id = c.author_id))
+    ORDER BY c.created_at ASC
+  `;
+
+  const comments = result.rows.map((row: any) => ({
+    id: row.id,
+    post_id: row.post_id,
+    author_id: row.author_id,
+    author_username: row.author_username,
+    author_display_name: row.author_display_name,
+    author_avatar_url: row.author_avatar_url,
+    content: row.content,
+    parent_comment_id: row.parent_comment_id,
+    like_count: row.like_count,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    is_liked: row.is_liked,
+    replies: [] as CommunityComment[],
+  }));
+
+  // Build reply tree
+  const commentMap = new Map<string, CommunityComment>();
+  const rootComments: CommunityComment[] = [];
+
+  comments.forEach(comment => {
+    commentMap.set(comment.id, comment);
+  });
+
+  comments.forEach(comment => {
+    if (comment.parent_comment_id) {
+      const parent = commentMap.get(comment.parent_comment_id);
+      if (parent) {
+        parent.replies.push(comment);
+      }
+    } else {
+      rootComments.push(comment);
+    }
+  });
+
+  return rootComments;
+}
+
+export async function deleteComment(commentId: string) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  const comment = await sql<{ author_id: string; post_id: string }>`
+    SELECT author_id, post_id FROM community_comments WHERE id = ${commentId}
+  `;
+
+  if (comment.rows.length === 0) {
+    throw new Error('Comment not found');
+  }
+
+  if (comment.rows[0].author_id !== user.id) {
+    throw new Error('Unauthorized');
+  }
+
+  const postId = comment.rows[0].post_id;
+
+  // Hard delete - delete related records first
+  await sql`DELETE FROM community_notifications WHERE comment_id = ${commentId}`;
+  await sql`DELETE FROM community_likes WHERE comment_id = ${commentId}`;
+  // Delete child comments (replies) if any
+  await sql`DELETE FROM community_comments WHERE parent_comment_id = ${commentId}`;
+  // Delete the comment itself
+  await sql`DELETE FROM community_comments WHERE id = ${commentId}`;
+
+  // Get actual comment count after deletion
+  const countResult = await sql<{ comment_count: number }>`
+    SELECT COUNT(*)::integer as comment_count
+    FROM community_comments 
+    WHERE post_id = ${postId}
+  `;
+
+  const commentCount = countResult.rows[0]?.comment_count ?? 0;
+
+  // Update cached count
+  await sql`
+    UPDATE community_posts 
+    SET comment_count = ${commentCount}
+    WHERE id = ${postId}
+  `;
+
+  revalidatePath(`/community/p/${postId}`);
+  return { 
+    success: true,
+    comment_count: commentCount
+  };
+}
+
+// ============================================
+// FOLLOW ACTIONS
+// ============================================
+
+export async function toggleFollow(userId: string) {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) redirect('/login');
+
+  if (currentUser.id === userId) {
+    throw new Error('Cannot follow yourself');
+  }
+
+  const existing = await sql<{ id: string }>`
+    SELECT id FROM community_follows WHERE follower_id = ${currentUser.id} AND following_id = ${userId}
+  `;
+
+  if (existing.rows.length > 0) {
+    await sql`
+      DELETE FROM community_follows WHERE follower_id = ${currentUser.id} AND following_id = ${userId}
+    `;
+  } else {
+    await sql`
+      INSERT INTO community_follows (follower_id, following_id)
+      VALUES (${currentUser.id}, ${userId})
+    `;
+
+    // Create notification
+    await sql`
+      INSERT INTO community_notifications (user_id, type, actor_id)
+      VALUES (${userId}, 'follow', ${currentUser.id})
+    `;
+  }
+
+  revalidatePath(`/u/${userId}`);
+  return { success: true };
+}
+
+// ============================================
+// PROFILE ACTIONS
+// ============================================
+
+export async function getProfile(username: string): Promise<CommunityProfile | null> {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) redirect('/login');
+
+  const result = await sql`
+    SELECT 
+      p.*,
+      CASE WHEN EXISTS (SELECT 1 FROM community_follows f WHERE f.follower_id = ${currentUser.id} AND f.following_id = p.user_id) THEN true ELSE false END as is_following,
+      CASE WHEN EXISTS (
+        SELECT 1 FROM community_friendships fr 
+        WHERE (fr.user1_id = ${currentUser.id} AND fr.user2_id = p.user_id) 
+           OR (fr.user1_id = p.user_id AND fr.user2_id = ${currentUser.id})
+      ) THEN true ELSE false END as is_friend,
+      CASE 
+        WHEN EXISTS (SELECT 1 FROM community_friend_requests fr WHERE fr.requester_id = ${currentUser.id} AND fr.receiver_id = p.user_id AND fr.status = 'pending') THEN 'sent'
+        WHEN EXISTS (SELECT 1 FROM community_friend_requests fr WHERE fr.requester_id = p.user_id AND fr.receiver_id = ${currentUser.id} AND fr.status = 'pending') THEN 'pending'
+        WHEN EXISTS (SELECT 1 FROM community_friendships fr WHERE (fr.user1_id = ${currentUser.id} AND fr.user2_id = p.user_id) OR (fr.user1_id = p.user_id AND fr.user2_id = ${currentUser.id})) THEN 'accepted'
+        ELSE 'none'
+      END as friend_request_status,
+      CASE WHEN EXISTS (SELECT 1 FROM community_blocks b WHERE b.blocker_id = ${currentUser.id} AND b.blocked_id = p.user_id) THEN true ELSE false END as is_blocked
+    FROM community_profiles p
+    WHERE LOWER(p.username) = LOWER(${username})
+  `;
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  const row = result.rows[0];
+  return {
+    id: row.id,
+    user_id: row.user_id,
+    username: row.username,
+    display_name: row.display_name,
+    bio: row.bio,
+    avatar_url: row.avatar_url,
+    cover_image_url: row.cover_image_url,
+    location: row.location,
+    website: row.website,
+    verified: row.verified,
+    follower_count: row.follower_count,
+    following_count: row.following_count,
+    post_count: row.post_count,
+    created_at: row.created_at,
+    is_following: row.is_following,
+    is_friend: row.is_friend,
+    friend_request_status: row.friend_request_status,
+    is_blocked: row.is_blocked,
+  };
+}
+
+export async function updateProfile(data: z.infer<typeof updateProfileSchema>) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  const validated = updateProfileSchema.parse(data);
+
+  // Check username uniqueness (if changed)
+  const existing = await sql<{ user_id: string }>`
+    SELECT user_id FROM community_profiles WHERE username = ${validated.username} AND user_id != ${user.id}
+  `;
+
+  if (existing.rows.length > 0) {
+    throw new Error('Username already taken');
+  }
+
+  await getOrCreateProfile(user.id);
+
+  await sql`
+    UPDATE community_profiles
+    SET 
+      username = ${validated.username},
+      display_name = ${validated.display_name},
+      bio = ${validated.bio || null},
+      avatar_url = ${validated.avatar_url || null},
+      cover_image_url = ${validated.cover_image_url || null},
+      location = ${validated.location || null},
+      website = ${validated.website || null},
+      updated_at = NOW()
+    WHERE user_id = ${user.id}
+  `;
+
+  revalidatePath(`/u/${validated.username}`);
+  return { success: true };
+}
+
+// ============================================
+// REPOST ACTIONS
+// ============================================
+
+export async function repostPost(postId: string, quoteText?: string) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  const existing = await sql<{ id: string }>`
+    SELECT id FROM community_reposts WHERE user_id = ${user.id} AND original_post_id = ${postId}
+  `;
+
+  if (existing.rows.length > 0) {
+    // Unrepost - delete the repost record
+    await sql`
+      DELETE FROM community_reposts WHERE user_id = ${user.id} AND original_post_id = ${postId}
+    `;
+    // Note: Notification remains (user did repost at some point), but repost count decreases
+  } else {
+    // Repost - create new repost record
+    await sql`
+      INSERT INTO community_reposts (user_id, original_post_id, quote_text)
+      VALUES (${user.id}, ${postId}, ${quoteText || null})
+    `;
+
+    // Create notification only if not reposting own post
+    const post = await sql<{ author_id: string }>`
+      SELECT author_id FROM community_posts WHERE id = ${postId}
+    `;
+    if (post.rows.length > 0 && post.rows[0].author_id !== user.id) {
+      await sql`
+        INSERT INTO community_notifications (user_id, type, actor_id, post_id)
+        VALUES (${post.rows[0].author_id}, 'repost', ${user.id}, ${postId})
+        ON CONFLICT DO NOTHING
+      `;
+    }
+  }
+
+  revalidatePath('/community');
+  revalidatePath(`/community/p/${postId}`);
+  return { success: true };
+}
+
+export async function getFriends() {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  const result = await sql`
+    SELECT 
+      CASE 
+        WHEN f.user1_id = ${user.id} THEN f.user2_id
+        ELSE f.user1_id
+      END as friend_id,
+      p.username,
+      p.display_name,
+      p.avatar_url
+    FROM community_friendships f
+    INNER JOIN community_profiles p ON (
+      CASE 
+        WHEN f.user1_id = ${user.id} THEN p.user_id = f.user2_id
+        ELSE p.user_id = f.user1_id
+      END
+    )
+    WHERE f.user1_id = ${user.id} OR f.user2_id = ${user.id}
+    ORDER BY p.display_name ASC
+  `;
+
+  return result.rows.map(row => ({
+    id: row.friend_id,
+    username: row.username,
+    display_name: row.display_name,
+    avatar_url: row.avatar_url,
+  }));
+}
+
+export async function sharePost(postId: string, friendId: string) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  if (!friendId) {
+    throw new Error('Friend ID is required');
+  }
+
+  // Verify friendship exists
+  const friendship = await sql<{ id: string }>`
+    SELECT id FROM community_friendships
+    WHERE (user1_id = ${user.id} AND user2_id = ${friendId})
+       OR (user1_id = ${friendId} AND user2_id = ${user.id})
+  `;
+
+  if (friendship.rows.length === 0) {
+    throw new Error('Friendship not found');
+  }
+
+  // Check if already shared to this friend
+  const existing = await sql<{ id: string }>`
+    SELECT id FROM community_shares 
+    WHERE user_id = ${user.id} AND post_id = ${postId} AND shared_to_user_id = ${friendId}
+  `;
+
+  if (existing.rows.length > 0) {
+    throw new Error('Post already shared to this friend');
+  }
+
+  // Create share record
+  await sql`
+    INSERT INTO community_shares (user_id, post_id, shared_to_user_id)
+    VALUES (${user.id}, ${postId}, ${friendId})
+  `;
+
+  // Create notification for the friend
+  await sql`
+    INSERT INTO community_notifications (user_id, type, actor_id, post_id)
+    VALUES (${friendId}, 'share', ${user.id}, ${postId})
+    ON CONFLICT DO NOTHING
+  `;
+
+  // Get actual share count from database
+  const countResult = await sql<{ share_count: number }>`
+    SELECT COUNT(*)::integer as share_count
+    FROM community_shares 
+    WHERE post_id = ${postId}
+  `;
+
+  const shareCount = countResult.rows[0]?.share_count ?? 0;
+  
+  // Update cached count
+  await sql`
+    UPDATE community_posts 
+    SET share_count = ${shareCount}
+    WHERE id = ${postId}
+  `;
+
+  revalidatePath('/community');
+  revalidatePath(`/community/p/${postId}`);
+  
+  return { 
+    success: true,
+    share_count: Math.max(0, shareCount)
+  };
+}
+
+// ============================================
+// BLOCK/REPORT ACTIONS
+// ============================================
+
+export async function blockUser(userId: string) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  if (user.id === userId) {
+    throw new Error('Cannot block yourself');
+  }
+
+  await sql`
+    INSERT INTO community_blocks (blocker_id, blocked_id)
+    VALUES (${user.id}, ${userId})
+    ON CONFLICT (blocker_id, blocked_id) DO NOTHING
+  `;
+
+  // Remove any follows/friend requests
+  await sql`
+    DELETE FROM community_follows WHERE (follower_id = ${user.id} AND following_id = ${userId}) OR (follower_id = ${userId} AND following_id = ${user.id})
+  `;
+
+  revalidatePath(`/u/${userId}`);
+  return { success: true };
+}
+
+export async function reportContent(
+  targetType: 'post' | 'comment' | 'user',
+  targetId: string,
+  reason: string,
+  details?: string
+) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  await sql`
+    INSERT INTO community_reports (reporter_id, target_type, target_id, reason, details)
+    VALUES (${user.id}, ${targetType}, ${targetId}, ${reason}, ${details || null})
+  `;
+
+  return { success: true };
+}
+
