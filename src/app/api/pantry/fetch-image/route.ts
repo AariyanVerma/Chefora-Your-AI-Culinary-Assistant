@@ -4,6 +4,10 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const productName = searchParams.get('name');
+    const quantity = searchParams.get('quantity');
+    const unit = searchParams.get('unit');
+    const category = searchParams.get('category');
+    const store = searchParams.get('store');
     const skipParam = searchParams.get('skip');
     const skip = skipParam ? parseInt(skipParam, 10) : 0;
 
@@ -46,15 +50,51 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Product name is required' }, { status: 400 });
     }
     
-    // Build a more specific query to get product images, not recipe images
-    // Exclude common recipe/dish terms and focus on the raw/fresh product
-    const searchTerms = [
-      `${query} fresh product`,
-      `${query} raw ingredient`,
-      `${query} whole food product`,
-      `${query} package product`,
-      `${query} grocery store product`
-    ];
+    // Build search query parts from available form data
+    const queryParts: string[] = [query];
+    
+    // Add quantity and unit for more specific results (e.g., "2 lb spinach")
+    if (quantity && unit) {
+      queryParts.push(`${quantity} ${unit}`);
+    } else if (unit) {
+      queryParts.push(unit);
+    }
+    
+    // Add store for store-specific product images
+    if (store && store !== 'Other') {
+      queryParts.push(store);
+    }
+    
+    // Add category for category-specific results
+    if (category) {
+      queryParts.push(category);
+    }
+    
+    const baseQuery = queryParts.join(' ');
+    
+    // Build multiple search term variations using all available information
+    const searchTerms: string[] = [];
+    
+    // Primary searches with all available info
+    searchTerms.push(`${baseQuery} product image`);
+    searchTerms.push(`${baseQuery} grocery product`);
+    
+    // Store-specific searches
+    if (store && store !== 'Other') {
+      searchTerms.push(`${query}${quantity && unit ? ` ${quantity} ${unit}` : ''} ${store} product`);
+    }
+    
+    // Category-specific searches
+    if (category) {
+      searchTerms.push(`${query}${quantity && unit ? ` ${quantity} ${unit}` : ''} ${category} product`);
+    }
+    
+    // Generic product searches (fallbacks)
+    searchTerms.push(`${query}${quantity && unit ? ` ${quantity} ${unit}` : ''} fresh product`);
+    searchTerms.push(`${query}${quantity && unit ? ` ${quantity} ${unit}` : ''} raw ingredient`);
+    searchTerms.push(`${query} whole food product`);
+    searchTerms.push(`${query} package product`);
+    searchTerms.push(`${query} grocery store product`);
     
     // Try multiple search strategies to find the best product image
     for (const searchQuery of searchTerms) {
@@ -110,6 +150,39 @@ export async function GET(request: Request) {
           productKeywords.forEach(keyword => {
             if (context.includes(keyword)) score += 2;
           });
+          
+          // Bonus points for matching store
+          if (store && store !== 'Other') {
+            const storeLower = store.toLowerCase();
+            if (context.includes(storeLower)) score += 5;
+            // Also check for store domain names
+            const storeDomains: Record<string, string[]> = {
+              'walmart': ['walmart', 'walmart.com'],
+              'target': ['target', 'target.com'],
+              'costco': ['costco', 'costco.com'],
+              'whole foods': ['wholefoods', 'wholefoodsmarket'],
+              'kroger': ['kroger', 'kroger.com'],
+              'safeway': ['safeway', 'safeway.com'],
+              'trader joe\'s': ['traderjoes', 'traderjoes.com'],
+              'aldi': ['aldi', 'aldi.com'],
+            };
+            const storeVariations = storeDomains[storeLower] || [storeLower];
+            storeVariations.forEach(variation => {
+              if (context.includes(variation)) score += 5;
+            });
+          }
+          
+          // Bonus points for matching category
+          if (category) {
+            const categoryLower = category.toLowerCase();
+            if (context.includes(categoryLower)) score += 3;
+          }
+          
+          // Bonus points for matching unit/quantity in context
+          if (unit) {
+            const unitLower = unit.toLowerCase();
+            if (context.includes(unitLower)) score += 2;
+          }
           
           // Negative points for recipe-related terms
           recipeKeywords.forEach(keyword => {
@@ -177,9 +250,16 @@ export async function GET(request: Request) {
     }
     
     // If all search terms failed, try a simpler search as last resort
+    // Still use available form data for better results
     try {
+      const fallbackQuery = store && store !== 'Other' 
+        ? `${query}${quantity && unit ? ` ${quantity} ${unit}` : ''} ${store} product`
+        : category
+        ? `${query}${quantity && unit ? ` ${quantity} ${unit}` : ''} ${category} product`
+        : `${query} product`;
+      
       const params = new URLSearchParams({
-        q: `${query} product`,
+        q: fallbackQuery,
         searchType: "image",
         num: "5",
         key: GOOGLE_SEARCH_KEY,

@@ -1,10 +1,13 @@
 'use client';
 
 import { PantryItem, fetchItemImage } from '../actions';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import PantryItemModal from './PantryItemModal';
 import { deletePantryItem, snoozeExpiryReminder, addToShoppingList } from '../actions';
 import { useRouter } from 'next/navigation';
+import { getShoppingLists, createShoppingList } from '../../shopping-list/actions';
+import type { ShoppingList } from '../../shopping-list/actions';
 
 interface PantryItemCardProps {
   item: PantryItem;
@@ -17,6 +20,30 @@ export default function PantryItemCard({ item, onUpdate, viewMode = 'grid' }: Pa
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isFetchingImage, setIsFetchingImage] = useState(false);
+  const [isListModalOpen, setIsListModalOpen] = useState(false);
+  const [shoppingLists, setShoppingLists] = useState<ShoppingList[]>([]);
+  const [isLoadingLists, setIsLoadingLists] = useState(false);
+  const [isAddingToList, setIsAddingToList] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<{ show: boolean; listName: string }>({ show: false, listName: '' });
+  const [isMounted, setIsMounted] = useState(false);
+  const [messagePosition, setMessagePosition] = useState<{ top: number; left: number } | null>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const calculateDashboardMainCenter = () => {
+    const dashboardMain = document.querySelector('.dashboard-main') as HTMLElement;
+    if (dashboardMain) {
+      const rect = dashboardMain.getBoundingClientRect();
+      const centerTop = rect.top + rect.height / 2;
+      const centerLeft = rect.left + rect.width / 2;
+      setMessagePosition({ top: centerTop, left: centerLeft });
+    } else {
+      // Fallback to viewport center if dashboard-main not found
+      setMessagePosition({ top: window.innerHeight / 2, left: window.innerWidth / 2 });
+    }
+  };
 
   const now = new Date();
   const expiryDate = item.expiry_date ? new Date(item.expiry_date) : null;
@@ -72,13 +99,86 @@ export default function PantryItemCard({ item, onUpdate, viewMode = 'grid' }: Pa
     }
   };
 
-  const handleAddToShoppingList = async () => {
+  const loadShoppingLists = async () => {
+    setIsLoadingLists(true);
     try {
-      await addToShoppingList(item.id);
-      alert('Added to shopping list!');
+      const lists = await getShoppingLists();
+      setShoppingLists(lists);
+    } catch (error) {
+      console.error('Failed to load shopping lists:', error);
+    } finally {
+      setIsLoadingLists(false);
+    }
+  };
+
+  const handleAddToShoppingList = async () => {
+    await loadShoppingLists();
+    setIsListModalOpen(true);
+  };
+
+  const handleSelectList = async (listId: string, listName: string) => {
+    setIsAddingToList(true);
+    try {
+      const result = await addToShoppingList(item.id, listId);
+      setIsListModalOpen(false);
+      setIsAddingToList(false);
+      
+      // Calculate center position of dashboard-main
+      calculateDashboardMainCenter();
+      
+      // Show custom success message
+      setSuccessMessage({ show: true, listName });
+      
+      // Hide success message after 3 seconds
+      setTimeout(() => {
+        setSuccessMessage({ show: false, listName: '' });
+        setMessagePosition(null);
+      }, 3000);
+      
+      // Update parent after a delay to allow message to display
+      setTimeout(() => {
+        onUpdate();
+      }, 3500);
     } catch (error) {
       console.error('Failed to add to shopping list:', error);
       alert('Failed to add to shopping list. Please try again.');
+      setIsAddingToList(false);
+    }
+  };
+
+  const handleCreateNewList = async () => {
+    setIsAddingToList(true);
+    try {
+      const newList = await createShoppingList({
+        name: `Shopping List ${shoppingLists.length + 1}`,
+        store: null,
+        planned_date: null,
+      });
+      const newListName = `Shopping List ${shoppingLists.length + 1}`;
+      const result = await addToShoppingList(item.id, newList.id);
+      setIsListModalOpen(false);
+      setIsAddingToList(false);
+      
+      // Calculate center position of dashboard-main
+      calculateDashboardMainCenter();
+      
+      // Show custom success message
+      setSuccessMessage({ show: true, listName: newListName });
+      
+      // Hide success message after 3 seconds
+      setTimeout(() => {
+        setSuccessMessage({ show: false, listName: '' });
+        setMessagePosition(null);
+      }, 3000);
+      
+      // Update parent after a delay to allow message to display
+      setTimeout(() => {
+        onUpdate();
+      }, 3500);
+    } catch (error) {
+      console.error('Failed to create list:', error);
+      alert('Failed to create new list. Please try again.');
+      setIsAddingToList(false);
     }
   };
 
@@ -171,14 +271,6 @@ export default function PantryItemCard({ item, onUpdate, viewMode = 'grid' }: Pa
                       Snooze
                     </button>
                   )}
-                  {item.is_running_low && (
-                    <button
-                      className="pantry-item-action-btn-3d"
-                      onClick={handleAddToShoppingList}
-                    >
-                      Add to List
-                    </button>
-                  )}
                   <button
                     className="pantry-item-action-btn-3d danger"
                     onClick={handleDelete}
@@ -187,6 +279,22 @@ export default function PantryItemCard({ item, onUpdate, viewMode = 'grid' }: Pa
                     {isDeleting ? 'Deleting...' : 'Delete'}
                   </button>
                 </div>
+                <button
+                  className="pantry-add-to-list-icon"
+                  onClick={handleAddToShoppingList}
+                  title="Add this item to shopping list"
+                >
+                  <img 
+                    src="/assets/add-to-list-icon.png" 
+                    alt="Add to shopping list"
+                    style={{ 
+                      width: '100%', 
+                      height: '100%', 
+                      objectFit: 'contain',
+                      background: 'transparent'
+                    }}
+                  />
+                </button>
               </div>
               {item.image_url ? (
                 <div className="pantry-item-image-wrapper list-view-image">
@@ -294,14 +402,6 @@ export default function PantryItemCard({ item, onUpdate, viewMode = 'grid' }: Pa
                       Snooze
                     </button>
                   )}
-                  {item.is_running_low && (
-                    <button
-                      className="pantry-item-action-btn-3d"
-                      onClick={handleAddToShoppingList}
-                    >
-                      Add to List
-                    </button>
-                  )}
                   <button
                     className="pantry-item-action-btn-3d danger"
                     onClick={handleDelete}
@@ -310,6 +410,22 @@ export default function PantryItemCard({ item, onUpdate, viewMode = 'grid' }: Pa
                     {isDeleting ? 'Deleting...' : 'Delete'}
                   </button>
                 </div>
+                <button
+                  className="pantry-add-to-list-icon"
+                  onClick={handleAddToShoppingList}
+                  title="Add this item to shopping list"
+                >
+                  <img 
+                    src="/assets/add-to-list-icon.png" 
+                    alt="Add to shopping list"
+                    style={{ 
+                      width: '100%', 
+                      height: '100%', 
+                      objectFit: 'contain',
+                      background: 'transparent'
+                    }}
+                  />
+                </button>
               </div>
               {expiryDate && (
                 <div className="pantry-item-date-box">
@@ -333,6 +449,194 @@ export default function PantryItemCard({ item, onUpdate, viewMode = 'grid' }: Pa
           }}
         />
       )}
+
+      {/* List Selection Modal */}
+      {isListModalOpen && (
+        <>
+          <div 
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              zIndex: 10000,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            onClick={() => setIsListModalOpen(false)}
+          />
+          <div 
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              backgroundColor: '#1a1a1a',
+              border: '2px solid rgba(103, 232, 249, 0.3)',
+              borderRadius: '20px',
+              padding: '24px',
+              zIndex: 10001,
+              minWidth: '400px',
+              maxWidth: '500px',
+              boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ color: '#fff', fontSize: '18px', fontWeight: '700', margin: 0 }}>
+                Select Shopping List
+              </h3>
+              <button
+                onClick={() => setIsListModalOpen(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#fff',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  padding: '0',
+                  width: '30px',
+                  height: '30px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ×
+              </button>
+            </div>
+            
+            <div style={{ marginBottom: '16px' }}>
+              <p style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '14px', margin: '0 0 12px 0' }}>
+                Choose a list to add "{item.name}" to:
+              </p>
+              
+              {isLoadingLists ? (
+                <div style={{ color: '#67e8f9', textAlign: 'center', padding: '20px' }}>
+                  Loading lists...
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
+                  {shoppingLists.map((list) => (
+                    <button
+                      key={list.id}
+                      onClick={() => handleSelectList(list.id, list.name)}
+                      disabled={isAddingToList}
+                      style={{
+                        padding: '12px 16px',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid rgba(103, 232, 249, 0.3)',
+                        borderRadius: '8px',
+                        color: '#fff',
+                        cursor: isAddingToList ? 'not-allowed' : 'pointer',
+                        textAlign: 'left',
+                        transition: 'all 0.3s ease',
+                        opacity: isAddingToList ? 0.6 : 1
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isAddingToList) {
+                          e.currentTarget.style.background = 'rgba(103, 232, 249, 0.15)';
+                          e.currentTarget.style.borderColor = 'rgba(103, 232, 249, 0.5)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isAddingToList) {
+                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                          e.currentTarget.style.borderColor = 'rgba(103, 232, 249, 0.3)';
+                        }
+                      }}
+                    >
+                      <div style={{ fontWeight: '600', marginBottom: '4px' }}>{list.name}</div>
+                      {list.store && (
+                        <div style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.6)' }}>
+                          Store: {list.store}
+                        </div>
+                      )}
+                      <div style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.6)' }}>
+                        {list.unpurchased_count || 0} items
+                      </div>
+                    </button>
+                  ))}
+                  
+                  {shoppingLists.length === 0 && (
+                    <div style={{ color: 'rgba(255, 255, 255, 0.5)', textAlign: 'center', padding: '20px' }}>
+                      No shopping lists found
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            <button
+              onClick={handleCreateNewList}
+              disabled={isAddingToList || isLoadingLists}
+              style={{
+                width: '100%',
+                padding: '12px',
+                background: 'rgba(103, 232, 249, 0.2)',
+                border: '1px solid rgba(103, 232, 249, 0.5)',
+                borderRadius: '8px',
+                color: '#67e8f9',
+                cursor: (isAddingToList || isLoadingLists) ? 'not-allowed' : 'pointer',
+                fontWeight: '600',
+                transition: 'all 0.3s ease',
+                opacity: (isAddingToList || isLoadingLists) ? 0.6 : 1
+              }}
+              onMouseEnter={(e) => {
+                if (!isAddingToList && !isLoadingLists) {
+                  e.currentTarget.style.background = 'rgba(103, 232, 249, 0.3)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isAddingToList && !isLoadingLists) {
+                  e.currentTarget.style.background = 'rgba(103, 232, 249, 0.2)';
+                }
+              }}
+            >
+              + Create New List
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Success Message - Rendered via Portal, centered in dashboard-main */}
+      {isMounted && successMessage.show && successMessage.listName && messagePosition && createPortal(
+        <div 
+          className="pantry-success-message"
+          style={{
+            position: 'fixed',
+            top: `${messagePosition.top}px`,
+            left: `${messagePosition.left}px`,
+            transform: 'translate(-50%, -50%)',
+            backgroundColor: '#22c55e',
+            color: '#fff',
+            padding: '24px 32px',
+            borderRadius: '16px',
+            boxShadow: '0 20px 60px rgba(34, 197, 94, 0.5)',
+            zIndex: 99999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '16px',
+            border: '2px solid rgba(255, 255, 255, 0.3)',
+            minWidth: '400px',
+            maxWidth: '500px',
+            pointerEvents: 'none'
+          }}
+        >
+          <span style={{ fontSize: '32px', flexShrink: 0 }}>✓</span>
+          <div style={{ flex: 1, textAlign: 'left' }}>
+            <div style={{ fontWeight: '700', fontSize: '18px' }}>
+              Item added to "{successMessage.listName}" successfully!
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
     </>
   );
 }

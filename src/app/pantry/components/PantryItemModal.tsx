@@ -85,6 +85,9 @@ export default function PantryItemModal({ item, onClose }: PantryItemModalProps)
     image_url: item?.image_url || '',
   });
   const [isFetchingImage, setIsFetchingImage] = useState(false);
+  const [imageFetchCount, setImageFetchCount] = useState(0);
+  const [isFetchingPrice, setIsFetchingPrice] = useState(false);
+  const [suggestedPrice, setSuggestedPrice] = useState<{ price: number; confidence: string; priceRange?: { min: number; max: number } } | null>(null);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -103,7 +106,7 @@ export default function PantryItemModal({ item, onClose }: PantryItemModalProps)
     };
   }, []);
 
-  const handleFetchImage = async () => {
+  const handleFetchImage = async (skip: number = 0) => {
     if (!formData.name.trim()) {
       alert('Please enter a product name first');
       return;
@@ -111,7 +114,16 @@ export default function PantryItemModal({ item, onClose }: PantryItemModalProps)
     
     setIsFetchingImage(true);
     try {
-      const response = await fetch(`/api/pantry/fetch-image?name=${encodeURIComponent(formData.name)}`);
+      const params = new URLSearchParams({
+        name: formData.name.trim(),
+        ...(formData.quantity && { quantity: String(formData.quantity) }),
+        ...(formData.unit && { unit: formData.unit }),
+        ...(formData.category && { category: formData.category }),
+        ...(skip > 0 && { skip: String(skip) }),
+      });
+      
+      const url = `/api/pantry/fetch-image?${params.toString()}`;
+      const response = await fetch(url);
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
@@ -121,6 +133,11 @@ export default function PantryItemModal({ item, onClose }: PantryItemModalProps)
       const data = await response.json();
       if (data.image_url) {
         setFormData({ ...formData, image_url: data.image_url });
+        if (skip === 0) {
+          setImageFetchCount(1);
+        } else {
+          setImageFetchCount(prev => prev + 1);
+        }
       } else {
         alert('Could not find an image for this product. Please try entering a URL manually.');
       }
@@ -131,6 +148,62 @@ export default function PantryItemModal({ item, onClose }: PantryItemModalProps)
     } finally {
       setIsFetchingImage(false);
     }
+  };
+
+  const handleFetchPrice = async () => {
+    if (!formData.name.trim()) {
+      alert('Please enter a product name first');
+      return;
+    }
+    
+    setIsFetchingPrice(true);
+    setSuggestedPrice(null);
+    
+    try {
+      const params = new URLSearchParams({
+        name: formData.name.trim(),
+        quantity: String(formData.quantity || 1),
+        unit: formData.unit || 'pcs',
+        store: '', // Pantry doesn't have store field
+        category: formData.category || '',
+      });
+
+      const url = `/api/shopping-list/fetch-price?${params.toString()}`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+      
+      const data = await response.json();
+      if (data.price !== undefined) {
+        setSuggestedPrice({
+          price: data.price,
+          confidence: data.confidence || 'low',
+          priceRange: data.priceRange,
+        });
+      } else {
+        alert('Could not find price information for this product. Please enter a price manually.');
+      }
+    } catch (error: any) {
+      console.error('Failed to fetch price:', error);
+      const errorMessage = error.message || 'Unknown error occurred';
+      alert(`Failed to fetch price: ${errorMessage}. Please enter a price manually.`);
+    } finally {
+      setIsFetchingPrice(false);
+    }
+  };
+
+  const handleAcceptPrice = () => {
+    if (suggestedPrice) {
+      setFormData({ ...formData, price: String(suggestedPrice.price) });
+      setSuggestedPrice(null);
+    }
+  };
+
+  const handleDeclinePrice = () => {
+    setSuggestedPrice(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -335,15 +408,126 @@ export default function PantryItemModal({ item, onClose }: PantryItemModalProps)
                     />
                   </div>
 
-                  <div className="pantry-form-group">
+                  <div className="pantry-form-group" style={{ flex: 1 }}>
                     <label className="pantry-form-label">Price</label>
-                    <input
-                      className="input"
-                      type="text"
-                      value={formData.price}
-                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                      placeholder="e.g., $5.99 or 5.99"
-                    />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                        <input
+                          className="input"
+                          type="text"
+                          value={formData.price}
+                          onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                          placeholder="e.g., $5.99 or 5.99"
+                          style={{ flex: 1 }}
+                        />
+                        <button
+                          type="button"
+                          onClick={handleFetchPrice}
+                          disabled={isFetchingPrice || !formData.name.trim()}
+                          className="btn"
+                          style={{
+                            padding: '12px 16px',
+                            whiteSpace: 'nowrap',
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            border: 'none',
+                            borderRadius: '12px',
+                            color: '#ffffff',
+                            fontWeight: 600,
+                            cursor: isFetchingPrice || !formData.name.trim() ? 'not-allowed' : 'pointer',
+                            opacity: isFetchingPrice || !formData.name.trim() ? 0.6 : 1,
+                            minWidth: '120px',
+                          }}
+                          title="Fetch today's current estimated price online"
+                        >
+                          {isFetchingPrice ? '⏳ Fetching...' : '💰 Fetch Price'}
+                        </button>
+                      </div>
+                      {suggestedPrice && (
+                        <div style={{
+                          padding: '12px',
+                          borderRadius: '8px',
+                          backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                          border: '1px solid rgba(139, 92, 246, 0.3)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '8px'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: '600', color: '#8b5cf6' }}>
+                              💰 Today's Estimated Price: ${suggestedPrice.price.toFixed(2)}
+                            </span>
+                            {suggestedPrice.confidence === 'high' && (
+                              <span style={{ 
+                                fontSize: '0.75rem', 
+                                padding: '2px 6px', 
+                                backgroundColor: 'rgba(34, 197, 94, 0.2)', 
+                                color: '#22c55e',
+                                borderRadius: '4px'
+                              }}>
+                                High Confidence
+                              </span>
+                            )}
+                            {suggestedPrice.confidence === 'medium' && (
+                              <span style={{ 
+                                fontSize: '0.75rem', 
+                                padding: '2px 6px', 
+                                backgroundColor: 'rgba(251, 191, 36, 0.2)', 
+                                color: '#fbbf24',
+                                borderRadius: '4px'
+                              }}>
+                                Medium Confidence
+                              </span>
+                            )}
+                            {suggestedPrice.confidence === 'low' && (
+                              <span style={{ 
+                                fontSize: '0.75rem', 
+                                padding: '2px 6px', 
+                                backgroundColor: 'rgba(239, 68, 68, 0.2)', 
+                                color: '#ef4444',
+                                borderRadius: '4px'
+                              }}>
+                                Low Confidence
+                              </span>
+                            )}
+                          </div>
+                          {suggestedPrice.priceRange && (
+                            <div style={{ fontSize: '0.875rem', color: 'rgba(255, 255, 255, 0.7)' }}>
+                              Price Range: ${suggestedPrice.priceRange.min.toFixed(2)} - ${suggestedPrice.priceRange.max.toFixed(2)}
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                            <button
+                              type="button"
+                              className="btn"
+                              onClick={handleAcceptPrice}
+                              style={{
+                                fontSize: '0.875rem',
+                                padding: '6px 12px',
+                                background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                                border: 'none',
+                                borderRadius: '8px',
+                                color: '#ffffff',
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              ✓ Accept
+                            </button>
+                            <button
+                              type="button"
+                              className="btn ghost"
+                              onClick={handleDeclinePrice}
+                              style={{
+                                fontSize: '0.875rem',
+                                padding: '6px 12px'
+                              }}
+                            >
+                              ✕ Decline
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -356,12 +540,12 @@ export default function PantryItemModal({ item, onClose }: PantryItemModalProps)
                         type="url"
                         value={formData.image_url}
                         onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                        placeholder="Image URL (auto-fetched if left empty)"
-                        style={{ flex: 3 }}
+                        placeholder="Enter image URL or click fetch to auto-detect"
+                        style={{ flex: 1 }}
                       />
                       <button
                         type="button"
-                        onClick={handleFetchImage}
+                        onClick={() => handleFetchImage(0)}
                         disabled={isFetchingImage || !formData.name.trim()}
                         className="btn"
                         style={{
@@ -374,16 +558,48 @@ export default function PantryItemModal({ item, onClose }: PantryItemModalProps)
                           fontWeight: 600,
                           cursor: isFetchingImage || !formData.name.trim() ? 'not-allowed' : 'pointer',
                           opacity: isFetchingImage || !formData.name.trim() ? 0.6 : 1,
-                          flex: 1,
                           minWidth: '120px',
                         }}
+                        title="Auto-fetch product image"
                       >
-                        {isFetchingImage ? 'Fetching...' : 'Auto-fetch'}
+                        {isFetchingImage ? '⏳' : '📷'} {isFetchingImage ? 'Fetching...' : 'Fetch'}
                       </button>
+                      {formData.image_url && (
+                        <button
+                          type="button"
+                          onClick={() => handleFetchImage(imageFetchCount)}
+                          disabled={isFetchingImage || !formData.name.trim()}
+                          className="btn"
+                          style={{
+                            padding: '12px 16px',
+                            whiteSpace: 'nowrap',
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            border: 'none',
+                            borderRadius: '12px',
+                            color: '#ffffff',
+                            fontWeight: 600,
+                            cursor: isFetchingImage || !formData.name.trim() ? 'not-allowed' : 'pointer',
+                            opacity: isFetchingImage || !formData.name.trim() ? 0.6 : 1,
+                            minWidth: '120px',
+                          }}
+                          title="Fetch a different/relevant image"
+                        >
+                          {isFetchingImage ? '⏳' : '🔄'} {isFetchingImage ? 'Fetching...' : 'Fetch New'}
+                        </button>
+                      )}
                     </div>
-                    <p style={{ fontSize: '12px', color: '#718096', marginTop: '4px' }}>
-                      Leave empty to automatically fetch an image, or enter a custom URL
-                    </p>
+                    {formData.image_url && (
+                      <div style={{ marginTop: '8px', borderRadius: '8px', overflow: 'hidden', maxWidth: '200px' }}>
+                        <img
+                          src={formData.image_url}
+                          alt="Preview"
+                          style={{ width: '100%', height: 'auto', display: 'block' }}
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
 

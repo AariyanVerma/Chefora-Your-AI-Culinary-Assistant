@@ -521,20 +521,256 @@ export async function bulkUpdateShoppingItems(data: z.infer<typeof bulkUpdateSch
   return { success: true };
 }
 
-// Get pantry items for smart suggestions
-export async function getPantryLowItems(): Promise<Array<{ id: string; name: string; category: string }>> {
+// Get smart pantry suggestions - automatically detects items that need restocking
+// This is smarter than relying on manual flags because it analyzes:
+// 1. Low quantity items (quantity < 1 or very low)
+// 2. Items expiring soon (need replacement)
+// 3. Items that were purchased frequently but aren't in pantry currently
+// 4. Items opened recently (likely running out)
+export async function getPantryLowItems(listId?: string): Promise<Array<{ id: string; name: string; category: string; reason: string }>> {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  const result = await sql<{ id: string; name: string; category: string }>`
-    SELECT id, name, category
-    FROM pantry_items
-    WHERE user_id = ${user.id} AND is_running_low = true
-    ORDER BY name ASC
-    LIMIT 20
-  `;
+  try {
+    // Get items already in current shopping list to avoid duplicates
+    let currentListItems = new Set<string>();
+    if (listId) {
+      const listItems = await sql<{ name: string }>`
+        SELECT LOWER(TRIM(name)) as name
+        FROM shopping_items
+        WHERE list_id = ${listId} AND user_id = ${user.id} AND purchased = false
+      `;
+      currentListItems = new Set(listItems.rows.map(item => item.name.toLowerCase().trim()));
+    }
 
-  return result.rows;
+
+    // Strategy 1: Items with very low quantity (< 1) or zero quantity
+    const lowQuantityItems = await sql<{ id: string; name: string; category: string; quantity: number }>`
+      SELECT id, name, category, quantity
+      FROM pantry_items
+      WHERE user_id = ${user.id} 
+        AND quantity < 1
+      ORDER BY quantity ASC, name ASC
+      LIMIT 15
+    `;
+
+    // Strategy 2: Items expiring within 3 days (need replacement soon)
+    const expiringSoonItems = await sql<{ id: string; name: string; category: string; expiry_date: string }>`
+      SELECT id, name, category, expiry_date
+      FROM pantry_items
+      WHERE user_id = ${user.id}
+        AND expiry_date IS NOT NULL
+        AND expiry_date::date BETWEEN CURRENT_DATE AND (CURRENT_DATE + INTERVAL '3 days')
+      ORDER BY expiry_date ASC
+      LIMIT 15
+    `;
+
+    // Strategy 3: Items that are opened and might be running out
+    const openedItems = await sql<{ id: string; name: string; category: string; quantity: number }>`
+      SELECT id, name, category, quantity
+      FROM pantry_items
+      WHERE user_id = ${user.id}
+        AND is_opened = true
+        AND quantity < 2  -- Opened items with low quantity likely need replacement
+      ORDER BY quantity ASC
+      LIMIT 15
+    `;
+
+    // Combine and deduplicate results, filtering out items already in shopping list
+    const allItems = new Map<string, { id: string; name: string; category: string; reason: string }>();
+    
+    lowQuantityItems.rows.forEach(item => {
+      if (!currentListItems.has(item.name.toLowerCase().trim())) {
+        allItems.set(item.id, {
+          id: item.id,
+          name: item.name,
+          category: item.category,
+          reason: `Low quantity (${item.quantity} ${item.quantity === 0 ? 'left' : 'remaining'})`
+        });
+      }
+    });
+
+    expiringSoonItems.rows.forEach(item => {
+      if (!currentListItems.has(item.name.toLowerCase().trim())) {
+        const existing = allItems.get(item.id);
+        if (!existing) {
+          const expiryDate = new Date(item.expiry_date);
+          const daysUntilExpiry = Math.ceil((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+          allItems.set(item.id, {
+            id: item.id,
+            name: item.name,
+            category: item.category,
+            reason: `Expires in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''}`
+          });
+        }
+      }
+    });
+
+    openedItems.rows.forEach(item => {
+      if (!currentListItems.has(item.name.toLowerCase().trim())) {
+        const existing = allItems.get(item.id);
+        if (!existing) {
+          allItems.set(item.id, {
+            id: item.id,
+            name: item.name,
+            category: item.category,
+            reason: 'Opened and running low'
+          });
+        }
+      }
+    });
+
+    return Array.from(allItems.values()).slice(0, 8);
+  } catch (error) {
+    console.error('Error getting smart pantry suggestions:', error);
+    return [];
+  }
+}
+
+// Get smart recipe-based suggestions
+// Analyzes what ingredients are commonly purchased together in shopping lists
+// and suggests items that are often bought but missing from pantry
+export async function getRecipeSuggestions(listId?: string): Promise<Array<{ name: string; category: string | null; reason: string }>> {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  try {
+    // Get current pantry items
+    const pantryItems = await sql<{ name: string }>`
+      SELECT LOWER(TRIM(name)) as name
+      FROM pantry_items
+      WHERE user_id = ${user.id}
+    `;
+    const pantryItemNames = new Set(pantryItems.rows.map(item => item.name.toLowerCase().trim()));
+
+    // Get items already in current shopping list
+    let currentListItems = new Set<string>();
+    if (listId) {
+      const listItems = await sql<{ name: string }>`
+        SELECT LOWER(TRIM(name)) as name
+        FROM shopping_items
+        WHERE list_id = ${listId} AND user_id = ${user.id} AND purchased = false
+      `;
+      currentListItems = new Set(listItems.rows.map(item => item.name.toLowerCase().trim()));
+    }
+
+    // Get current list items to filter them out
+    let currentListItemsLower = new Set<string>();
+    if (listId) {
+      const listItemsResult = await sql<{ name: string }>`
+        SELECT LOWER(TRIM(name)) as name
+        FROM shopping_items
+        WHERE list_id = ${listId} AND user_id = ${user.id} AND purchased = false
+      `;
+      currentListItemsLower = new Set(listItemsResult.rows.map(item => item.name));
+    }
+
+    // Strategy: Find items that appear frequently in shopping lists (purchased items)
+    // but are NOT currently in the pantry - these are likely common cooking ingredients
+    const frequentlyPurchasedButNotInPantry = await sql<{ 
+      name: string; 
+      category: string | null; 
+      frequency: number 
+    }>`
+      SELECT 
+        si.name,
+        si.category,
+        COUNT(DISTINCT si.list_id)::int as frequency
+      FROM shopping_items si
+      WHERE si.user_id = ${user.id}
+        AND si.purchased = true
+        AND si.created_at >= (NOW() - INTERVAL '60 days')
+        AND LOWER(TRIM(si.name)) NOT IN (
+          SELECT LOWER(TRIM(name)) FROM pantry_items WHERE user_id = ${user.id}
+        )
+      GROUP BY si.name, si.category
+      HAVING COUNT(DISTINCT si.list_id) >= 2  -- Appeared in at least 2 shopping trips
+      ORDER BY frequency DESC, si.name ASC
+      LIMIT 10
+    `;
+
+    // Filter out items already in current shopping list
+    const filtered = frequentlyPurchasedButNotInPantry.rows.filter(item => 
+      !currentListItemsLower.has(item.name.toLowerCase().trim())
+    );
+
+    const suggestions = filtered.map(item => ({
+      name: item.name,
+      category: item.category,
+      reason: `Purchased ${item.frequency} time${item.frequency > 1 ? 's' : ''} recently - commonly needed`
+    }));
+
+    // If we don't have enough suggestions from history, add some common essentials
+    if (suggestions.length < 5) {
+      const commonEssentials = [
+        { name: 'Onion', category: 'Produce', reason: 'Essential cooking ingredient' },
+        { name: 'Garlic', category: 'Produce', reason: 'Used in many recipes' },
+        { name: 'Olive Oil', category: 'Oils', reason: 'Cooking essential' },
+        { name: 'Salt', category: 'Spices', reason: 'Basic seasoning' },
+        { name: 'Black Pepper', category: 'Spices', reason: 'Common seasoning' },
+      ];
+
+      commonEssentials.forEach(ess => {
+        const essNameLower = ess.name.toLowerCase().trim();
+        if (!pantryItemNames.has(essNameLower) && 
+            !currentListItems.has(essNameLower) &&
+            !suggestions.find(s => s.name.toLowerCase().trim() === essNameLower)) {
+          suggestions.push(ess);
+        }
+      });
+    }
+
+    return suggestions.slice(0, 5);
+  } catch (error) {
+    console.error('Error getting recipe suggestions:', error);
+    return [];
+  }
+}
+
+// Get frequently bought items from shopping history
+export async function getFrequentlyBoughtItems(listId?: string): Promise<Array<{ name: string; category: string | null; frequency: number }>> {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  try {
+    // Get items already in current shopping list
+    let currentListItems = new Set<string>();
+    if (listId) {
+      const listItems = await sql<{ name: string }>`
+        SELECT LOWER(TRIM(name)) as name
+        FROM shopping_items
+        WHERE list_id = ${listId} AND user_id = ${user.id} AND purchased = false
+      `;
+      currentListItems = new Set(listItems.rows.map(item => item.name.toLowerCase().trim()));
+    }
+
+    // Get frequently purchased items from shopping history (items marked as purchased in the last 30 days)
+    const result = await sql<{ name: string; category: string | null; frequency: number }>`
+      SELECT 
+        name,
+        category,
+        COUNT(*)::int as frequency
+      FROM shopping_items
+      WHERE user_id = ${user.id} 
+        AND purchased = true
+        AND updated_at >= (NOW() - INTERVAL '30 days')
+      GROUP BY name, category
+      HAVING COUNT(*) >= 2
+      ORDER BY frequency DESC, name ASC
+      LIMIT 10
+    `;
+
+    // Filter out items already in current shopping list
+    const suggestions = result.rows.filter(item => {
+      const itemNameLower = item.name.toLowerCase().trim();
+      return !currentListItems.has(itemNameLower);
+    });
+
+    return suggestions.slice(0, 5);
+  } catch (error) {
+    console.error('Error getting frequently bought items:', error);
+    return [];
+  }
 }
 
 

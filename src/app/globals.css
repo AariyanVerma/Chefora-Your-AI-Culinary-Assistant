@@ -8777,6 +8777,7 @@ body.shopping-modal-open nav {
   transform-style: preserve-3d;
   border-radius: 0;
   position: relative;
+  position: relative;
   flex: 1;
   min-height: 0;
 }
@@ -8960,6 +8961,61 @@ body.shopping-modal-open nav {
   color: #ffffff;
   box-shadow: 0 0 15px rgba(239, 68, 68, 0.9), inset 0 0 10px rgba(0, 0, 0, 0.3);
   scale: 1.1;
+}
+
+/* Add to List Icon Button */
+.pantry-add-to-list-icon {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  width: 40px;
+  height: 40px;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer;
+  padding: 0;
+  z-index: 10;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.pantry-add-to-list-icon img {
+  background: transparent !important;
+  filter: none;
+  mix-blend-mode: normal;
+  opacity: 1;
+}
+
+.pantry-add-to-list-icon:hover {
+  transform: scale(1.1);
+}
+
+.pantry-add-to-list-icon:hover img {
+  opacity: 1;
+  filter: brightness(1.1);
+}
+
+.pantry-add-to-list-icon:active {
+  transform: scale(0.95);
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.pantry-success-message {
+  animation: slideInRight 0.3s ease;
 }
 
 .pantry-item-date-box {

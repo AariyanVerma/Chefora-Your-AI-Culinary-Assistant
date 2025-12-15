@@ -857,6 +857,8 @@
   padding: 20px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1),
               inset 0 0 10px rgba(0, 255, 255, 0.1);
+  overflow: visible;
+  position: relative;
 }
 
 .shopping-smart-title {
@@ -932,6 +934,8 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  position: relative;
+  overflow: visible;
 }
 
 .shopping-budget-total {
@@ -954,15 +958,33 @@
 
 .shopping-budget-progress {
   height: 8px;
+  min-height: 8px;
+  max-height: 8px;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   overflow: hidden;
+  position: relative;
+  width: 100%;
+  display: block;
+  contain: layout style paint;
+  isolation: isolate;
 }
 
 .shopping-budget-bar {
   height: 100%;
   background: linear-gradient(90deg, #67e8f9, #a78bfa);
   transition: width 0.3s ease;
+}
+
+.shopping-budget-bar-segment {
+  border-radius: 4px;
+  min-width: 2px;
+  z-index: 1;
+  top: 0;
+  bottom: 0;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 .shopping-budget-items {
@@ -1008,6 +1030,25 @@
   padding: 10px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 8px;
+  transition: all 0.3s ease;
+  font-family: inherit;
+  color: inherit;
+}
+
+.shopping-route-item:hover {
+  background: rgba(103, 232, 249, 0.15) !important;
+  border-color: rgba(103, 232, 249, 0.3) !important;
+  transform: translateX(4px);
+}
+
+.shopping-route-item:active {
+  transform: translateX(2px) scale(0.98);
+}
+
+.shopping-route-item-active {
+  background: rgba(103, 232, 249, 0.2) !important;
+  border: 1px solid rgba(103, 232, 249, 0.5) !important;
+  box-shadow: 0 0 10px rgba(103, 232, 249, 0.3);
 }
 
 .shopping-route-number {
@@ -1029,6 +1070,13 @@
   font-size: 14px;
   font-weight: 500;
   color: #ffffff;
+}
+
+.shopping-route-item-count {
+  font-size: 12px;
+  color: rgba(103, 232, 249, 0.8);
+  font-weight: 600;
+  margin-left: 4px;
 }
 
 .shopping-route-arrow {

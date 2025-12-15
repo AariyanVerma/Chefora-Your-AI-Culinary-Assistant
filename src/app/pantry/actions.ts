@@ -636,7 +636,7 @@ export async function snoozeExpiryReminder(itemId: string, hours: number = 24) {
 }
 
 // Add to shopping list
-export async function addToShoppingList(itemId: string) {
+export async function addToShoppingList(itemId: string, listId?: string) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
@@ -654,22 +654,84 @@ export async function addToShoppingList(itemId: string) {
 
   const pantryItem = item.rows[0];
 
+  // Get or create a default shopping list
+  let targetListId = listId;
+  if (!targetListId) {
+    // Get the most recently updated non-archived list, or create a new one
+    const existingList = await sql<{ id: string }>`
+      SELECT id FROM shopping_lists 
+      WHERE user_id = ${user.id} AND archived = false 
+      ORDER BY updated_at DESC 
+      LIMIT 1
+    `;
+    
+    if (existingList.rows.length > 0) {
+      targetListId = existingList.rows[0].id;
+    } else {
+      // Create a new default list
+      const newList = await sql<{ id: string }>`
+        INSERT INTO shopping_lists (user_id, name, store, planned_date, archived)
+        VALUES (${user.id}, 'Shopping List', null, null, false)
+        RETURNING id
+      `;
+      targetListId = newList.rows[0].id;
+    }
+  }
+
+  // Check if item already exists in this list (by pantry_item_id)
+  const existing = await sql<{ id: string }>`
+    SELECT id FROM shopping_items 
+    WHERE list_id = ${targetListId} 
+      AND user_id = ${user.id} 
+      AND pantry_item_id = ${itemId}
+      AND purchased = false
+    LIMIT 1
+  `;
+
+  if (existing.rows.length > 0) {
+    // Item already in list, don't duplicate
+    return { success: true, message: 'Item already in shopping list' };
+  }
+
+  // Convert price string to number if it exists
+  let priceEst: number | null = null;
+  if (pantryItem.price) {
+    const priceNum = typeof pantryItem.price === 'string' 
+      ? parseFloat(pantryItem.price.replace(/[^\d.-]/g, '')) 
+      : pantryItem.price;
+    priceEst = isNaN(priceNum) ? null : priceNum;
+  }
+
+  // Insert into shopping_items with pantry_item_id link
   await sql`
-    INSERT INTO shopping_list_items (user_id, name, quantity, unit, category, notes)
+    INSERT INTO shopping_items (
+      list_id, user_id, name, quantity, unit, category, 
+      notes, pantry_item_id, image_url, price_est
+    )
     VALUES (
+      ${targetListId},
       ${user.id},
       ${pantryItem.name},
       ${pantryItem.quantity},
       ${pantryItem.unit},
-      ${pantryItem.category},
-      ${pantryItem.notes || null}
+      ${pantryItem.category || null},
+      ${pantryItem.notes || null},
+      ${itemId},
+      ${pantryItem.image_url || null},
+      ${priceEst}
     )
-    ON CONFLICT DO NOTHING
+  `;
+
+  // Update shopping list updated_at timestamp
+  await sql`
+    UPDATE shopping_lists
+    SET updated_at = NOW()
+    WHERE id = ${targetListId} AND user_id = ${user.id}
   `;
 
   revalidatePath('/pantry');
   revalidatePath('/shopping-list');
-  return { success: true };
+  return { success: true, listId: targetListId };
 }
 
 // Fetch and update image for existing item
