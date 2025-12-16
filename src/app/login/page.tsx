@@ -255,6 +255,8 @@ export default function LoginPage() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [requires2FA, setRequires2FA] = useState(false);
+  const [twoFACode, setTwoFACode] = useState('');
   const [splineLoaded, setSplineLoaded] = useState(false);
   const [activeDialogues, setActiveDialogues] = useState<Array<{
     id: string;
@@ -982,6 +984,7 @@ export default function LoginPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
+          totpCode: requires2FA ? twoFACode : undefined,
           redirectTo: '/dashboard',
         }),
         credentials: 'include', // Ensure cookies are included
@@ -989,6 +992,14 @@ export default function LoginPage() {
 
       const data = await res.json();
       if (!res.ok) {
+        // Check if 2FA is required
+        if (data.requires2FA) {
+          setRequires2FA(true);
+          setError('Enter your 2FA code to continue');
+          setLoading(false);
+          return;
+        }
+
         // Handle server-side errors
         const errorMessage = data.error || 'Invalid credentials';
         setError(errorMessage);
@@ -1208,6 +1219,46 @@ export default function LoginPage() {
                   />
                 </div>
               </div>
+
+              {requires2FA && (
+                <div className="auth-input-group">
+                  <label className="auth-label">2FA Code</label>
+                  <div className="auth-input-wrapper">
+                    <svg
+                      className="auth-input-icon"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                      />
+                    </svg>
+                    <input
+                      name="twoFACode"
+                      className="auth-input-modern"
+                      placeholder="Enter 6-digit code"
+                      type="text"
+                      value={twoFACode}
+                      onChange={(e) => setTwoFACode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      maxLength={6}
+                      required={requires2FA}
+                      style={{
+                        textAlign: 'center',
+                        fontSize: '20px',
+                        letterSpacing: '6px',
+                        fontFamily: 'monospace',
+                      }}
+                    />
+                  </div>
+                  <p style={{ marginTop: '0.5rem', fontSize: '12px', color: 'rgba(255, 255, 255, 0.6)' }}>
+                    Enter the 6-digit code from your authenticator app
+                  </p>
+                </div>
+              )}
 
               {error && (
                 <div className="auth-error-message">

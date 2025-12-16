@@ -73,10 +73,34 @@ export default function SettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
 
+  // 2FA states
+  const [twoFAEnabled, setTwoFAEnabled] = useState(false);
+  const [twoFALoading, setTwoFALoading] = useState(false);
+  const [twoFASetup, setTwoFASetup] = useState<{
+    qrCode: string;
+    secret: string;
+  } | null>(null);
+  const [twoFAVerifyCode, setTwoFAVerifyCode] = useState('');
+  const [twoFADisableCode, setTwoFADisableCode] = useState('');
+  const [disabling2FA, setDisabling2FA] = useState(false);
+
   useEffect(() => {
     fetchDashboardData();
     fetchUserData();
+    fetch2FAStatus();
   }, []);
+
+  async function fetch2FAStatus() {
+    try {
+      const response = await fetch('/api/auth/2fa/status');
+      if (response.ok) {
+        const data = await response.json();
+        setTwoFAEnabled(data.enabled || false);
+      }
+    } catch (error) {
+      console.error('Error fetching 2FA status:', error);
+    }
+  }
 
   async function fetchDashboardData() {
     try {
@@ -248,6 +272,93 @@ export default function SettingsPage() {
       setMessage({ type: 'error', text: 'Error changing password' });
     } finally {
       setChangingPassword(false);
+    }
+  }
+
+  async function handle2FASetup() {
+    try {
+      setTwoFALoading(true);
+      const response = await fetch('/api/auth/2fa/setup');
+      if (response.ok) {
+        const data = await response.json();
+        setTwoFASetup({
+          qrCode: data.qrCode,
+          secret: data.manualEntryKey,
+        });
+      } else {
+        const data = await response.json();
+        setMessage({ type: 'error', text: data.error || 'Failed to setup 2FA' });
+      }
+    } catch (error) {
+      console.error('Error setting up 2FA:', error);
+      setMessage({ type: 'error', text: 'Error setting up 2FA' });
+    } finally {
+      setTwoFALoading(false);
+    }
+  }
+
+  async function handle2FAEnable(e: React.FormEvent) {
+    e.preventDefault();
+    if (!twoFASetup) return;
+
+    try {
+      setTwoFALoading(true);
+      const response = await fetch('/api/auth/2fa/enable', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          secret: twoFASetup.secret,
+          code: twoFAVerifyCode,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setMessage({ type: 'success', text: data.message || '2FA enabled successfully!' });
+        setTwoFAEnabled(true);
+        setTwoFASetup(null);
+        setTwoFAVerifyCode('');
+        await fetch2FAStatus();
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Failed to enable 2FA' });
+      }
+    } catch (error) {
+      console.error('Error enabling 2FA:', error);
+      setMessage({ type: 'error', text: 'Error enabling 2FA' });
+    } finally {
+      setTwoFALoading(false);
+    }
+  }
+
+  async function handle2FADisable(e: React.FormEvent) {
+    e.preventDefault();
+
+    try {
+      setDisabling2FA(true);
+      const response = await fetch('/api/auth/2fa/disable', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: twoFADisableCode,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setMessage({ type: 'success', text: data.message || '2FA disabled successfully!' });
+        setTwoFAEnabled(false);
+        setTwoFADisableCode('');
+        await fetch2FAStatus();
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Failed to disable 2FA' });
+      }
+    } catch (error) {
+      console.error('Error disabling 2FA:', error);
+      setMessage({ type: 'error', text: 'Error disabling 2FA' });
+    } finally {
+      setDisabling2FA(false);
     }
   }
 
@@ -900,6 +1011,180 @@ export default function SettingsPage() {
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          </div>
+
+          {/* Two-Factor Authentication Section */}
+          <div className="card-wrapper dashboard-stat-card" style={{ width: '100%', margin: '1.5rem auto 0' }}>
+            <div className="card-background"></div>
+            <div className="glass card card-mount">
+              <div className="cardBody">
+                <div className="dashboard-card-header">
+                  <span className="dashboard-card-icon">🔐</span>
+                  <h3 className="cardTitle" style={{ marginBottom: '0' }}>Two-Factor Authentication</h3>
+                </div>
+
+                <div style={{ marginTop: '1.5rem' }}>
+                  {!twoFAEnabled ? (
+                    <>
+                      {!twoFASetup ? (
+                        <div>
+                          <p style={{ marginBottom: '1rem', color: 'var(--muted)', fontSize: 'var(--fs-sm)' }}>
+                            Add an extra layer of security to your account by enabling two-factor authentication (2FA).
+                            You'll need to use Google Authenticator or any compatible app to generate verification codes.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={handle2FASetup}
+                            disabled={twoFALoading}
+                            className="dashboard-card-button"
+                          >
+                            {twoFALoading ? 'Setting up...' : 'Enable 2FA'}
+                          </button>
+                        </div>
+                      ) : (
+                        <form onSubmit={handle2FAEnable}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div>
+                              <p style={{ marginBottom: '1rem', color: 'var(--text)', fontSize: 'var(--fs-sm)' }}>
+                                Scan this QR code with Google Authenticator or any compatible app:
+                              </p>
+                              <div style={{ 
+                                display: 'flex', 
+                                justifyContent: 'center', 
+                                marginBottom: '1rem',
+                                padding: '1rem',
+                                background: 'rgba(255, 255, 255, 0.05)',
+                                borderRadius: '8px'
+                              }}>
+                                <img 
+                                  src={twoFASetup.qrCode} 
+                                  alt="2FA QR Code" 
+                                  style={{ maxWidth: '200px', height: 'auto' }}
+                                />
+                              </div>
+                              <p style={{ marginBottom: '1rem', color: 'var(--muted)', fontSize: 'var(--fs-sm)' }}>
+                                Or enter this code manually: <code style={{ 
+                                  fontFamily: 'monospace', 
+                                  background: 'rgba(255, 255, 255, 0.1)',
+                                  padding: '2px 6px',
+                                  borderRadius: '4px'
+                                }}>{twoFASetup.secret}</code>
+                              </p>
+                            </div>
+
+                            <div>
+                              <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text)', fontSize: 'var(--fs-sm)', fontWeight: '500' }}>
+                                Enter verification code from your app *
+                              </label>
+                              <input
+                                type="text"
+                                value={twoFAVerifyCode}
+                                onChange={(e) => setTwoFAVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                required
+                                placeholder="000000"
+                                maxLength={6}
+                                style={{
+                                  width: '100%',
+                                  padding: 'var(--pad-md)',
+                                  background: 'rgba(255, 255, 255, 0.05)',
+                                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                                  borderRadius: '8px',
+                                  color: 'var(--text)',
+                                  fontSize: '24px',
+                                  textAlign: 'center',
+                                  letterSpacing: '8px',
+                                  fontFamily: 'monospace',
+                                }}
+                              />
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              <button
+                                type="submit"
+                                disabled={twoFALoading || twoFAVerifyCode.length !== 6}
+                                className="dashboard-card-button"
+                                style={{ flex: 1 }}
+                              >
+                                {twoFALoading ? 'Enabling...' : 'Verify and Enable'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setTwoFASetup(null);
+                                  setTwoFAVerifyCode('');
+                                }}
+                                className="dashboard-card-button"
+                                style={{ 
+                                  flex: 1, 
+                                  background: 'rgba(239, 68, 68, 0.2)',
+                                  borderColor: 'rgba(239, 68, 68, 0.3)'
+                                }}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        </form>
+                      )}
+                    </>
+                  ) : (
+                    <form onSubmit={handle2FADisable}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div style={{
+                          padding: '1rem',
+                          background: 'rgba(34, 197, 94, 0.1)',
+                          border: '1px solid rgba(34, 197, 94, 0.3)',
+                          borderRadius: '8px',
+                          marginBottom: '1rem'
+                        }}>
+                          <p style={{ color: '#4ade80', fontSize: 'var(--fs-sm)', margin: 0 }}>
+                            ✓ Two-factor authentication is enabled for your account.
+                          </p>
+                        </div>
+
+                        <div>
+                          <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text)', fontSize: 'var(--fs-sm)', fontWeight: '500' }}>
+                            Enter verification code to disable 2FA *
+                          </label>
+                          <input
+                            type="text"
+                            value={twoFADisableCode}
+                            onChange={(e) => setTwoFADisableCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                            required
+                            placeholder="000000"
+                            maxLength={6}
+                            style={{
+                              width: '100%',
+                              padding: 'var(--pad-md)',
+                              background: 'rgba(255, 255, 255, 0.05)',
+                              border: '1px solid rgba(255, 255, 255, 0.2)',
+                              borderRadius: '8px',
+                              color: 'var(--text)',
+                              fontSize: '24px',
+                              textAlign: 'center',
+                              letterSpacing: '8px',
+                              fontFamily: 'monospace',
+                            }}
+                          />
+                        </div>
+
+                        <button
+                          type="submit"
+                          disabled={disabling2FA || twoFADisableCode.length !== 6}
+                          className="dashboard-card-button"
+                          style={{ 
+                            background: 'rgba(239, 68, 68, 0.2)',
+                            borderColor: 'rgba(239, 68, 68, 0.3)'
+                          }}
+                        >
+                          {disabling2FA ? 'Disabling...' : 'Disable 2FA'}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
               </div>
             </div>
           </div>
