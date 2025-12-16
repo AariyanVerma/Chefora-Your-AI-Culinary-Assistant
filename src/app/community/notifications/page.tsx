@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation';
-import DashboardLayout from '@/app/components/DashboardLayout';
 import { getCurrentUser } from '@/lib/auth';
-import CreatePostClient from './CreatePostClient';
+import DashboardLayout from '@/app/components/DashboardLayout';
+import NotificationsPageClient from './NotificationsPageClient';
 
-export default async function CreatePostPage() {
+export default async function NotificationsPage() {
   const user = await getCurrentUser();
   if (!user) {
     redirect('/login');
@@ -11,7 +11,14 @@ export default async function CreatePostPage() {
 
   return (
     <DashboardLayout>
-      <CreatePostClient />
+      <NotificationsPageClient />
     </DashboardLayout>
   );
 }
+
+
+
+
+
+
+

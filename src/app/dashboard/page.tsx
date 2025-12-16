@@ -28,6 +28,8 @@ export default function DashboardPage() {
   const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [username, setUsername] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
@@ -62,6 +64,20 @@ export default function DashboardPage() {
           setUser(data.user);
           setProfile(data.profile);
           setStats(data.stats || stats);
+          
+          // Fetch avatar and username from community profile
+          if (data.user?.id) {
+            try {
+              const profileRes = await fetch(`/api/community/profile?userId=${data.user.id}`);
+              if (profileRes.ok) {
+                const profileData = await profileRes.json();
+                setAvatarUrl(profileData.avatar_url);
+                setUsername(profileData.username);
+              }
+            } catch (error) {
+              console.error('Failed to fetch community profile:', error);
+            }
+          }
         } else if (res.status === 401) {
           router.push('/login');
         } else {
@@ -312,7 +328,56 @@ export default function DashboardPage() {
                   <div className="dashboard-user-name">{user.name}</div>
                   <div className="dashboard-user-email">{user.email}</div>
                 </div>
-                <div className="dashboard-user-avatar" />
+                {username ? (
+                  <Link 
+                    href={`/community/u/${username}`}
+                    className="dashboard-user-avatar"
+                    style={{ cursor: 'pointer', textDecoration: 'none', display: 'block', position: 'relative', overflow: 'hidden' }}
+                  >
+                    {avatarUrl ? (
+                      <Image
+                        src={avatarUrl}
+                        alt={user?.name || 'User avatar'}
+                        width={36}
+                        height={36}
+                        style={{ objectFit: 'cover', borderRadius: '50%' }}
+                        unoptimized
+                      />
+                    ) : (
+                      <div style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #a855f7, #06b6d4)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#fff',
+                        fontSize: '14px',
+                        fontWeight: 'bold'
+                      }}>
+                        {user?.name?.charAt(0).toUpperCase() || 'U'}
+                      </div>
+                    )}
+                  </Link>
+                ) : (
+                  <div className="dashboard-user-avatar">
+                    {user?.name && (
+                      <div style={{
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#fff',
+                        fontSize: '14px',
+                        fontWeight: 'bold'
+                      }}>
+                        {user.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                )}
                 <LogoutButton />
               </div>
             </div>

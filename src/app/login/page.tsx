@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 
 const Spline = dynamic(() => import('@splinetool/react-spline').then((mod) => mod.default), {
@@ -250,6 +250,7 @@ const getTimeBasedGreetings = (firstName: string = ''): string[] => {
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -275,6 +276,44 @@ export default function LoginPage() {
   useEffect(() => {
     formRef.current = form;
   }, [form]);
+
+  // Check if user is already logged in and redirect if so
+  useEffect(() => {
+    // Only check once on mount, not repeatedly
+    let isMounted = true;
+    
+    const checkAuth = async () => {
+      try {
+        const res = await fetch('/api/auth/me', {
+          method: 'GET',
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        const data = await res.json();
+        if (isMounted && data.user && data.user.id) {
+          // User is already logged in, redirect to dashboard
+          console.log('[Login Page] User already authenticated, redirecting to dashboard');
+          // Clear the justLoggedIn flag if it exists
+          sessionStorage.removeItem('justLoggedIn');
+          // Use window.location.replace to avoid adding to history and prevent back button issues
+          window.location.replace('/dashboard');
+        }
+      } catch (err) {
+        // Ignore errors, user is not logged in
+        if (isMounted) {
+          console.error('Auth check error:', err);
+        }
+      }
+    };
+    
+    // Only check once after a short delay
+    const timeout = setTimeout(checkAuth, 300);
+    
+    return () => {
+      isMounted = false;
+      clearTimeout(timeout);
+    };
+  }, []);
 
   // Fetch user name from database when email is entered
   useEffect(() => {
@@ -936,10 +975,15 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      // Always redirect to dashboard after login
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          redirectTo: '/dashboard',
+        }),
+        credentials: 'include', // Ensure cookies are included
       });
 
       const data = await res.json();
@@ -962,7 +1006,38 @@ export default function LoginPage() {
         return;
       }
 
-      router.push('/dashboard');
+      // Login successful - cookie is set in the response
+      console.log('[Login] Login successful, cookie set. Verifying and redirecting...');
+      
+      // Wait a moment for browser to process the cookie, then verify and redirect
+      setTimeout(async () => {
+        try {
+          // Verify the cookie is available
+          const verifyRes = await fetch('/api/auth/me', {
+            method: 'GET',
+            credentials: 'include',
+            cache: 'no-store',
+          });
+          
+          const verifyData = await verifyRes.json();
+          
+          if (verifyData.user && verifyData.user.id) {
+            console.log('[Login] Cookie verified, redirecting to dashboard');
+            // Cookie is confirmed, redirect directly to dashboard
+            window.location.replace('/dashboard');
+          } else {
+            console.warn('[Login] Cookie not yet available, waiting...');
+            // Retry after a delay
+            setTimeout(() => {
+              window.location.replace('/dashboard');
+            }, 1000);
+          }
+        } catch (err) {
+          console.error('[Login] Error verifying cookie:', err);
+          // On error, redirect anyway
+          window.location.replace('/dashboard');
+        }
+      }, 500);
     } catch (err) {
       console.error(err);
       setError('Network error');

@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Heart, MessageCircle, Bookmark, Share2, Repeat2, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import { toggleLikePost, toggleSavePost, repostPost, deletePost } from '../actions';
 import ShareModal from './ShareModal';
@@ -37,9 +38,11 @@ interface PostCardProps {
     is_reposted?: boolean;
   };
   currentUserId?: string;
+  compact?: boolean;
+  onDelete?: (postId: string) => void;
 }
 
-export default function PostCard({ post, currentUserId }: PostCardProps) {
+export default function PostCard({ post, currentUserId, compact = false, onDelete }: PostCardProps) {
   const router = useRouter();
   const [isLiked, setIsLiked] = useState(post.is_liked);
   const [isSaved, setIsSaved] = useState(post.is_saved);
@@ -192,7 +195,12 @@ export default function PostCard({ post, currentUserId }: PostCardProps) {
     setDeleting(true);
     try {
       await deletePost(post.id);
-      router.refresh();
+      // Call onDelete callback if provided, otherwise fall back to refresh
+      if (onDelete) {
+        onDelete(post.id);
+      } else {
+        router.refresh();
+      }
     } catch (error) {
       console.error('Failed to delete post:', error);
       alert('Failed to delete post. Please try again.');
@@ -238,6 +246,196 @@ export default function PostCard({ post, currentUserId }: PostCardProps) {
     router.push(`/community/p/${post.id}`);
   };
 
+  // Compact grid view
+  if (compact) {
+    return (
+      <div 
+        className="community-post-card-compact" 
+        style={{ 
+          cursor: 'pointer',
+          position: 'relative',
+          aspectRatio: '1',
+          borderRadius: '12px',
+          overflow: 'hidden',
+          background: 'rgba(0, 0, 0, 0.45)',
+          border: '1px solid rgba(103, 232, 249, 0.3)',
+          transition: 'all 0.3s ease'
+        }}
+        onClick={handleCardClick}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'scale(1.02)';
+          e.currentTarget.style.borderColor = 'rgba(103, 232, 249, 0.6)';
+          e.currentTarget.style.boxShadow = '0 0 20px rgba(103, 232, 249, 0.3)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'scale(1)';
+          e.currentTarget.style.borderColor = 'rgba(103, 232, 249, 0.3)';
+          e.currentTarget.style.boxShadow = 'none';
+        }}
+      >
+        {post.media_urls.length > 0 && (
+          <div 
+            style={{ 
+              width: '100%', 
+              height: '100%', 
+              position: 'relative',
+              overflow: 'hidden'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ImageCarousel
+              images={post.media_urls}
+              alt={post.title}
+              className="community-post-compact-carousel"
+              imageClassName="community-post-compact-image"
+              showIndicators={post.media_urls.length > 1}
+              showArrows={post.media_urls.length > 1}
+            />
+          </div>
+        )}
+        {/* Menu button for edit/delete */}
+        {isOwner && (
+          <div style={{
+            position: 'absolute',
+            top: '8px',
+            right: '8px',
+            zIndex: 10
+          }}>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowMenu(!showMenu);
+              }}
+              className="btn ghost tap-ripple"
+              style={{
+                width: '32px',
+                height: '32px',
+                padding: '0',
+                minWidth: 'auto',
+                background: 'rgba(0, 0, 0, 0.7)',
+                backdropFilter: 'blur(10px)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '1px solid rgba(255, 255, 255, 0.2)'
+              }}
+              aria-label="Post options"
+            >
+              <MoreVertical size={16} color="#fff" />
+            </button>
+            {showMenu && (
+              <div 
+                className="community-post-card-menu"
+                style={{
+                  position: 'absolute',
+                  top: '40px',
+                  right: '0',
+                  background: 'rgba(11, 18, 32, 0.98)',
+                  backdropFilter: 'blur(20px) saturate(200%)',
+                  WebkitBackdropFilter: 'blur(20px) saturate(200%)',
+                  borderRadius: '12px',
+                  border: '1px solid var(--border)',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+                  zIndex: 1000,
+                  minWidth: '180px',
+                  overflow: 'hidden'
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  className="community-menu-item"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowMenu(false);
+                    router.push(`/community/edit/${post.id}`);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text)',
+                    cursor: 'pointer',
+                    borderRadius: '6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(103, 232, 249, 0.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'none';
+                  }}
+                >
+                  <Edit size={16} style={{ marginRight: '8px' }} />
+                  Edit Post
+                </button>
+                <button
+                  type="button"
+                  className="community-menu-item"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowMenu(false);
+                    handleDelete(e);
+                  }}
+                  disabled={deleting}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    background: 'none',
+                    border: 'none',
+                    color: '#ef4444',
+                    cursor: deleting ? 'not-allowed' : 'pointer',
+                    borderRadius: '6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!deleting) {
+                      e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'none';
+                  }}
+                >
+                  <Trash2 size={16} style={{ marginRight: '8px' }} />
+                  {deleting ? 'Deleting...' : 'Delete Post'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+        {/* Like and comment count overlay */}
+        <div style={{
+          position: 'absolute',
+          bottom: '8px',
+          left: '8px',
+          right: '8px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          background: 'rgba(0, 0, 0, 0.6)',
+          backdropFilter: 'blur(10px)',
+          padding: '6px 10px',
+          borderRadius: '8px',
+          zIndex: 5
+        }}>
+          <Heart size={14} fill={isLiked ? '#ef4444' : 'none'} color={isLiked ? '#ef4444' : 'currentColor'} />
+          <span style={{ fontSize: '12px', color: 'var(--text)' }}>{likeCount}</span>
+          <MessageCircle size={14} />
+          <span style={{ fontSize: '12px', color: 'var(--text)' }}>{post.comment_count}</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Full list view
   return (
     <>
       <div 
@@ -255,7 +453,12 @@ export default function PostCard({ post, currentUserId }: PostCardProps) {
       >
               {/* Header */}
               <div className="community-post-header">
-                <div className="community-post-author">
+                <Link 
+                  href={`/community/u/${post.author_username}`}
+                  className="community-post-author"
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ textDecoration: 'none', color: 'inherit' }}
+                >
                   <div className="community-avatar">
                     {post.author_avatar_url ? (
                       <Image
@@ -276,7 +479,7 @@ export default function PostCard({ post, currentUserId }: PostCardProps) {
                     <div className="community-post-author-name">{post.author_display_name}</div>
                     <div className="community-post-author-handle">@{post.author_username}</div>
                   </div>
-                </div>
+                </Link>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div className="community-post-time">{formatTimeAgo(post.created_at)}</div>
                   {isOwner && (
@@ -437,7 +640,7 @@ export default function PostCard({ post, currentUserId }: PostCardProps) {
                   onClick={handleLike}
                   className={`community-post-action ${isLiked ? 'active' : ''}`}
                   aria-label="Like"
-                  style={{ color: isLiked ? '#ef4444' : 'inherit' }}
+                  style={{ color: '#ef4444' }}
                 >
                   <Heart size={20} fill={isLiked ? '#ef4444' : 'none'} />
                   <span>{likeCount}</span>

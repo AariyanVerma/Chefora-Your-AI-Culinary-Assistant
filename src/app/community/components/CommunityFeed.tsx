@@ -34,6 +34,11 @@ export default function CommunityFeed({ initialPosts = [], currentUserId }: Comm
     }
   };
 
+  // Handle post deletion - remove from state
+  const handlePostDelete = (postId: string) => {
+    setPosts(prevPosts => prevPosts.filter(p => p.id !== postId));
+  };
+
   useEffect(() => {
     const handleScroll = () => {
       if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 1000) {
@@ -67,7 +72,7 @@ export default function CommunityFeed({ initialPosts = [], currentUserId }: Comm
   return (
     <div className="community-feed">
       {posts.map(post => (
-        <PostCard key={post.id} post={post} currentUserId={currentUserId} />
+        <PostCard key={post.id} post={post} currentUserId={currentUserId} onDelete={handlePostDelete} />
       ))}
       {loading && (
         <div className="community-loading" style={{ marginTop: '16px' }}>

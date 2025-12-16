@@ -16,6 +16,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [user, setUser] = useState<{ id: string; name: string; email: string } | null>(null);
+  const [username, setUsername] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [notificationCount, setNotificationCount] = useState(0);
 
   useEffect(() => {
     async function fetchUser() {
@@ -24,6 +27,20 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         if (res.ok) {
           const data = await res.json();
           setUser(data.user);
+          
+          // Fetch username and avatar from community profile
+          if (data.user?.id) {
+            try {
+              const profileRes = await fetch(`/api/community/profile?userId=${data.user.id}`);
+              if (profileRes.ok) {
+                const profileData = await profileRes.json();
+                setUsername(profileData.username);
+                setAvatarUrl(profileData.avatar_url);
+              }
+            } catch (error) {
+              console.error('Failed to fetch profile:', error);
+            }
+          }
         } else if (res.status === 401) {
           router.push('/login');
         }
@@ -33,6 +50,48 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
     fetchUser();
   }, [router]);
+
+  // Fetch notification count
+  useEffect(() => {
+    async function fetchNotificationCount() {
+      try {
+        const res = await fetch('/api/community/notifications/count', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          setNotificationCount(data.count || 0);
+        }
+      } catch (error) {
+        console.error('Failed to fetch notification count:', error);
+      }
+    }
+
+    if (user) {
+      fetchNotificationCount();
+      
+      // Poll every 5 seconds for updates
+      const interval = setInterval(fetchNotificationCount, 5000);
+      
+      // Refresh when page becomes visible (user returns from notifications page)
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+          fetchNotificationCount();
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      
+      // Listen for notifications-read event
+      const handleNotificationsRead = () => {
+        fetchNotificationCount();
+      };
+      window.addEventListener('notifications-read', handleNotificationsRead);
+      
+      return () => {
+        clearInterval(interval);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        window.removeEventListener('notifications-read', handleNotificationsRead);
+      };
+    }
+  }, [user]);
 
   return (
     <>
@@ -128,8 +187,31 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             href="/community" 
             className={`dashboard-nav-link ${pathname === '/community' ? 'dashboard-nav-link-active' : ''}`}
             onClick={() => setSidebarOpen(false)}
+            style={{ position: 'relative' }}
           >
-            Community
+            <span>Community</span>
+            {notificationCount > 0 && (
+              <span style={{
+                position: 'absolute',
+                top: '8px',
+                right: '12px',
+                background: '#ef4444',
+                color: 'white',
+                borderRadius: '50%',
+                width: '18px',
+                height: '18px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '10px',
+                fontWeight: 600,
+                border: '2px solid var(--bg)',
+                boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)',
+                zIndex: 10
+              }}>
+                {notificationCount > 99 ? '99+' : notificationCount}
+              </span>
+            )}
           </Link>
           <Link 
             href="/settings" 
@@ -212,10 +294,69 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <button className="btn ghost tap-ripple dashboard-theme-toggle">☾</button>
               <div className="dashboard-user-info">
                 <div className="dashboard-user-details">
-                  <div className="dashboard-user-name">{user?.name || 'User'}</div>
+                  {username ? (
+                    <Link 
+                      href={`/community/u/${username}`}
+                      className="dashboard-user-name"
+                      style={{ cursor: 'pointer', textDecoration: 'none' }}
+                    >
+                      {user?.name || 'User'}
+                    </Link>
+                  ) : (
+                    <div className="dashboard-user-name">{user?.name || 'User'}</div>
+                  )}
                   <div className="dashboard-user-email">{user?.email || ''}</div>
                 </div>
-                <div className="dashboard-user-avatar" />
+                {username ? (
+                  <Link 
+                    href={`/community/u/${username}`}
+                    className="dashboard-user-avatar"
+                    style={{ cursor: 'pointer', textDecoration: 'none', display: 'block', position: 'relative', overflow: 'hidden' }}
+                  >
+                    {avatarUrl ? (
+                      <Image
+                        src={avatarUrl}
+                        alt={user?.name || 'User avatar'}
+                        width={36}
+                        height={36}
+                        style={{ objectFit: 'cover', borderRadius: '50%' }}
+                        unoptimized
+                      />
+                    ) : (
+                      <div style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #a855f7, #06b6d4)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#fff',
+                        fontSize: '14px',
+                        fontWeight: 'bold'
+                      }}>
+                        {user?.name?.charAt(0).toUpperCase() || 'U'}
+                      </div>
+                    )}
+                  </Link>
+                ) : (
+                  <div className="dashboard-user-avatar">
+                    {user?.name && (
+                      <div style={{
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#fff',
+                        fontSize: '14px',
+                        fontWeight: 'bold'
+                      }}>
+                        {user.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                )}
                 <LogoutButton />
               </div>
             </div>

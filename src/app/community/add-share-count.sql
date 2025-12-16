@@ -44,7 +44,7 @@ BEGIN
     ELSIF TG_TABLE_NAME = 'community_shares' THEN
       UPDATE community_posts SET share_count = GREATEST(0, share_count - 1) WHERE id = OLD.post_id;
     END IF;
-  END IF;
+  END IF;image.png
   RETURN COALESCE(NEW, OLD);
 END;
 $$ LANGUAGE plpgsql;

@@ -37,7 +37,10 @@ const updateProfileSchema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters').max(30),
   display_name: z.string().min(1, 'Display name is required').max(100),
   bio: z.string().max(500).optional(),
-  avatar_url: z.string().url().optional().or(z.literal('')),
+  avatar_url: z.string().refine(
+    (val) => !val || val.startsWith('http://') || val.startsWith('https://') || val.startsWith('data:image/'),
+    { message: 'Avatar must be a valid URL or data URL' }
+  ).optional().or(z.literal('')),
   cover_image_url: z.string().url().optional().or(z.literal('')),
   location: z.string().max(100).optional(),
   website: z.string().url().max(200).optional().or(z.literal('')),
@@ -392,6 +395,9 @@ export async function getPosts(params: {
   filter_cuisine?: string;
   filter_diet?: string[];
   filter_difficulty?: string;
+  filter_time?: string;
+  filter_servings?: string;
+  filter_tags?: string[];
   search?: string;
   page?: number;
   limit?: number;
@@ -404,6 +410,9 @@ export async function getPosts(params: {
     filter_cuisine,
     filter_diet,
     filter_difficulty,
+    filter_time,
+    filter_servings,
+    filter_tags,
     search,
     page = 1,
     limit = 20,
@@ -419,6 +428,19 @@ export async function getPosts(params: {
   // Or build completely separate queries - but that's verbose
   // For MVP, let's use a simpler approach: fetch all visible posts, filter in memory for complex cases
   
+  // Get user's friends for privacy filtering
+  const userFriends = await sql<{ user_id: string }>`
+    SELECT 
+      CASE 
+        WHEN user1_id = ${user.id} THEN user2_id
+        ELSE user1_id
+      END as user_id
+    FROM community_friendships
+    WHERE user1_id = ${user.id} OR user2_id = ${user.id}
+  `;
+  const friendIds = userFriends.rows.map(r => r.user_id);
+  friendIds.push(user.id); // Include self
+
   // First, get all posts that pass basic visibility checks
   // Calculate actual counts from tables to ensure accuracy
   const allPosts = await sql`
@@ -446,6 +468,11 @@ export async function getPosts(params: {
     LEFT JOIN community_post_media pm ON pm.post_id = p.id
     LEFT JOIN community_recipes r ON r.post_id = p.id
     WHERE NOT EXISTS (SELECT 1 FROM community_blocks b WHERE (b.blocker_id = ${user.id} AND b.blocked_id = p.author_id) OR (b.blocked_id = ${user.id} AND b.blocker_id = p.author_id))
+      AND (
+        p.visibility = 'public'
+        OR (p.visibility = 'friends' AND p.author_id = ANY(${friendIds}::uuid[]))
+        OR (p.visibility = 'private' AND p.author_id = ${user.id})
+      )
     GROUP BY p.id, prof.username, prof.display_name, prof.avatar_url, r.ingredients, r.instructions,
       r.servings, r.prep_time_minutes, r.cook_time_minutes, r.total_time_minutes, r.difficulty, r.cuisine, r.diet_tags, r.tags
     ORDER BY p.created_at DESC
@@ -474,11 +501,61 @@ export async function getPosts(params: {
     filtered = filtered.filter(p => p.difficulty === filter_difficulty);
   }
 
+  // Apply time filter
+  if (filter_time) {
+    filtered = filtered.filter(p => {
+      const totalTime = p.total_time_minutes;
+      if (!totalTime) return false;
+      
+      switch (filter_time) {
+        case 'quick':
+          return totalTime <= 15;
+        case 'fast':
+          return totalTime > 15 && totalTime <= 30;
+        case 'moderate':
+          return totalTime > 30 && totalTime <= 60;
+        case 'long':
+          return totalTime > 60;
+        default:
+          return true;
+      }
+    });
+  }
+
+  // Apply servings filter
+  if (filter_servings) {
+    filtered = filtered.filter(p => {
+      const servings = p.servings;
+      if (!servings) return false;
+      
+      switch (filter_servings) {
+        case '1-2':
+          return servings >= 1 && servings <= 2;
+        case '3-4':
+          return servings >= 3 && servings <= 4;
+        case '5-6':
+          return servings >= 5 && servings <= 6;
+        case '7+':
+          return servings >= 7;
+        default:
+          return true;
+      }
+    });
+  }
+
   // Apply diet filter
   if (filter_diet && filter_diet.length > 0) {
     filtered = filtered.filter(p => {
       const dietTags = p.diet_tags || [];
       return filter_diet.some(d => dietTags.includes(d));
+    });
+  }
+
+  // Apply tags filter
+  if (filter_tags && filter_tags.length > 0) {
+    filtered = filtered.filter(p => {
+      const tags = p.tags || [];
+      return filter_tags.some(t => tags.includes(t));
     });
   }
 
@@ -888,6 +965,76 @@ export async function toggleLikePost(postId: string) {
   };
 }
 
+export async function toggleLikeComment(commentId: string) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  // Get the post_id from the comment for revalidation
+  const comment = await sql<{ post_id: string }>`
+    SELECT post_id FROM community_comments WHERE id = ${commentId}
+  `;
+
+  if (comment.rows.length === 0) {
+    throw new Error('Comment not found');
+  }
+
+  const postId = comment.rows[0].post_id;
+
+  const existing = await sql<{ id: string }>`
+    SELECT id FROM community_likes WHERE user_id = ${user.id} AND comment_id = ${commentId}
+  `;
+
+  if (existing.rows.length > 0) {
+    // Unlike
+    await sql`
+      DELETE FROM community_likes WHERE user_id = ${user.id} AND comment_id = ${commentId}
+    `;
+  } else {
+    // Like
+    await sql`
+      INSERT INTO community_likes (user_id, comment_id)
+      VALUES (${user.id}, ${commentId})
+    `;
+
+    // Create notification (if not own comment)
+    const commentAuthor = await sql<{ author_id: string }>`
+      SELECT author_id FROM community_comments WHERE id = ${commentId}
+    `;
+    if (commentAuthor.rows.length > 0 && commentAuthor.rows[0].author_id !== user.id) {
+      await sql`
+        INSERT INTO community_notifications (user_id, type, actor_id, post_id, comment_id)
+        VALUES (${commentAuthor.rows[0].author_id}, 'like', ${user.id}, ${postId}, ${commentId})
+        ON CONFLICT DO NOTHING
+      `;
+    }
+  }
+
+  // Get the updated like count from the database
+  const countResult = await sql<{ like_count: number; is_liked: boolean }>`
+    SELECT 
+      (SELECT COUNT(*)::integer FROM community_likes WHERE comment_id = ${commentId}) as like_count,
+      EXISTS (SELECT 1 FROM community_likes WHERE user_id = ${user.id} AND comment_id = ${commentId}) as is_liked
+  `;
+
+  const likeCount = countResult.rows[0]?.like_count ?? 0;
+  const isLiked = countResult.rows[0]?.is_liked ?? false;
+  
+  // Update cached count in comments table
+  await sql`
+    UPDATE community_comments 
+    SET like_count = ${likeCount}
+    WHERE id = ${commentId}
+  `;
+
+  revalidatePath(`/community/p/${postId}`);
+  
+  return { 
+    success: true,
+    like_count: Math.max(0, likeCount), // Ensure never negative
+    is_liked: isLiked
+  };
+}
+
 export async function toggleSavePost(postId: string) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
@@ -1110,6 +1257,55 @@ export async function toggleFollow(userId: string) {
 // PROFILE ACTIONS
 // ============================================
 
+export async function getProfileByUsername(username: string, currentUserId: string): Promise<CommunityProfile | null> {
+  const result = await sql`
+    SELECT 
+      p.*,
+      (SELECT COUNT(*)::integer FROM community_posts WHERE author_id = p.user_id AND deleted_at IS NULL) as actual_post_count,
+      CASE WHEN EXISTS (SELECT 1 FROM community_follows f WHERE f.follower_id = ${currentUserId} AND f.following_id = p.user_id) THEN true ELSE false END as is_following,
+      CASE WHEN EXISTS (
+        SELECT 1 FROM community_friendships fr 
+        WHERE (fr.user1_id = ${currentUserId} AND fr.user2_id = p.user_id) 
+           OR (fr.user1_id = p.user_id AND fr.user2_id = ${currentUserId})
+      ) THEN true ELSE false END as is_friend,
+      CASE 
+        WHEN EXISTS (SELECT 1 FROM community_friend_requests fr WHERE fr.requester_id = ${currentUserId} AND fr.receiver_id = p.user_id AND fr.status = 'pending') THEN 'sent'
+        WHEN EXISTS (SELECT 1 FROM community_friend_requests fr WHERE fr.requester_id = p.user_id AND fr.receiver_id = ${currentUserId} AND fr.status = 'pending') THEN 'pending'
+        WHEN EXISTS (SELECT 1 FROM community_friendships fr WHERE (fr.user1_id = ${currentUserId} AND fr.user2_id = p.user_id) OR (fr.user1_id = p.user_id AND fr.user2_id = ${currentUserId})) THEN 'accepted'
+        ELSE 'none'
+      END as friend_request_status,
+      CASE WHEN EXISTS (SELECT 1 FROM community_blocks b WHERE b.blocker_id = ${currentUserId} AND b.blocked_id = p.user_id) THEN true ELSE false END as is_blocked
+    FROM community_profiles p
+    WHERE LOWER(p.username) = LOWER(${username})
+  `;
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  const row = result.rows[0];
+  return {
+    id: row.id,
+    user_id: row.user_id,
+    username: row.username,
+    display_name: row.display_name,
+    bio: row.bio,
+    avatar_url: row.avatar_url,
+    cover_image_url: row.cover_image_url,
+    location: row.location,
+    website: row.website,
+    verified: row.verified,
+    follower_count: row.follower_count,
+    following_count: row.following_count,
+    post_count: row.actual_post_count ?? row.post_count ?? 0,
+    created_at: row.created_at,
+    is_following: row.is_following,
+    is_friend: row.is_friend,
+    friend_request_status: row.friend_request_status,
+    is_blocked: row.is_blocked,
+  };
+}
+
 export async function getProfile(username: string): Promise<CommunityProfile | null> {
   const currentUser = await getCurrentUser();
   if (!currentUser) redirect('/login');
@@ -1239,38 +1435,6 @@ export async function repostPost(postId: string, quoteText?: string) {
   return { success: true };
 }
 
-export async function getFriends() {
-  const user = await getCurrentUser();
-  if (!user) redirect('/login');
-
-  const result = await sql`
-    SELECT 
-      CASE 
-        WHEN f.user1_id = ${user.id} THEN f.user2_id
-        ELSE f.user1_id
-      END as friend_id,
-      p.username,
-      p.display_name,
-      p.avatar_url
-    FROM community_friendships f
-    INNER JOIN community_profiles p ON (
-      CASE 
-        WHEN f.user1_id = ${user.id} THEN p.user_id = f.user2_id
-        ELSE p.user_id = f.user1_id
-      END
-    )
-    WHERE f.user1_id = ${user.id} OR f.user2_id = ${user.id}
-    ORDER BY p.display_name ASC
-  `;
-
-  return result.rows.map(row => ({
-    id: row.friend_id,
-    username: row.username,
-    display_name: row.display_name,
-    avatar_url: row.avatar_url,
-  }));
-}
-
 export async function sharePost(postId: string, friendId: string) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
@@ -1336,6 +1500,494 @@ export async function sharePost(postId: string, friendId: string) {
     success: true,
     share_count: Math.max(0, shareCount)
   };
+}
+
+// ============================================
+// FRIEND MANAGEMENT ACTIONS
+// ============================================
+
+export async function sendFriendRequest(userId: string) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  if (user.id === userId) {
+    throw new Error('Cannot send friend request to yourself');
+  }
+
+  // Check if already friends
+  const friendship = await sql<{ id: string }>`
+    SELECT id FROM community_friendships
+    WHERE (user1_id = ${user.id} AND user2_id = ${userId})
+       OR (user1_id = ${userId} AND user2_id = ${user.id})
+  `;
+
+  if (friendship.rows.length > 0) {
+    throw new Error('Already friends');
+  }
+
+  // Check if request already exists
+  const existing = await sql<{ id: string; status: string }>`
+    SELECT id, status FROM community_friend_requests
+    WHERE (requester_id = ${user.id} AND receiver_id = ${userId})
+       OR (requester_id = ${userId} AND receiver_id = ${user.id})
+  `;
+
+  if (existing.rows.length > 0) {
+    const request = existing.rows[0];
+    if (request.status === 'pending') {
+      throw new Error('Friend request already pending');
+    }
+    if (request.status === 'accepted') {
+      throw new Error('Already friends');
+    }
+  }
+
+  // Create friend request
+  await sql`
+    INSERT INTO community_friend_requests (requester_id, receiver_id, status)
+    VALUES (${user.id}, ${userId}, 'pending')
+    ON CONFLICT (requester_id, receiver_id) DO UPDATE
+    SET status = 'pending', updated_at = NOW()
+  `;
+
+  // Create notification
+  await sql`
+    INSERT INTO community_notifications (user_id, type, actor_id)
+    VALUES (${userId}, 'friend_request', ${user.id})
+    ON CONFLICT DO NOTHING
+  `;
+
+  revalidatePath(`/community/u/${userId}`);
+  revalidatePath('/community/friends');
+  return { success: true };
+}
+
+export async function acceptFriendRequest(requestId: string) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  // Get the request
+  const request = await sql<{ requester_id: string; receiver_id: string }>`
+    SELECT requester_id, receiver_id FROM community_friend_requests
+    WHERE id = ${requestId} AND receiver_id = ${user.id} AND status = 'pending'
+  `;
+
+  if (request.rows.length === 0) {
+    throw new Error('Friend request not found or already processed');
+  }
+
+  const requesterId = request.rows[0].requester_id;
+  const receiverId = request.rows[0].receiver_id;
+
+  // Update request status
+  await sql`
+    UPDATE community_friend_requests
+    SET status = 'accepted', updated_at = NOW()
+    WHERE id = ${requestId}
+  `;
+
+  // Create friendship (ensure user1_id < user2_id)
+  const user1Id = requesterId < receiverId ? requesterId : receiverId;
+  const user2Id = requesterId < receiverId ? receiverId : requesterId;
+
+  await sql`
+    INSERT INTO community_friendships (user1_id, user2_id)
+    VALUES (${user1Id}, ${user2Id})
+    ON CONFLICT (user1_id, user2_id) DO NOTHING
+  `;
+
+  // Create notification for requester
+  await sql`
+    INSERT INTO community_notifications (user_id, type, actor_id)
+    VALUES (${requesterId}, 'friend_accepted', ${user.id})
+    ON CONFLICT DO NOTHING
+  `;
+
+  revalidatePath('/community/friends');
+  revalidatePath(`/community/u/${requesterId}`);
+  return { success: true };
+}
+
+export async function rejectFriendRequest(requestId: string) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  // Update request status
+  await sql`
+    UPDATE community_friend_requests
+    SET status = 'rejected', updated_at = NOW()
+    WHERE id = ${requestId} AND receiver_id = ${user.id} AND status = 'pending'
+  `;
+
+  revalidatePath('/community/friends');
+  return { success: true };
+}
+
+export async function removeFriend(userId: string) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  // Delete friendship
+  await sql`
+    DELETE FROM community_friendships
+    WHERE (user1_id = ${user.id} AND user2_id = ${userId})
+       OR (user1_id = ${userId} AND user2_id = ${user.id})
+  `;
+
+  // Delete any pending friend requests
+  await sql`
+    DELETE FROM community_friend_requests
+    WHERE (requester_id = ${user.id} AND receiver_id = ${userId})
+       OR (requester_id = ${userId} AND receiver_id = ${user.id})
+  `;
+
+  revalidatePath(`/community/u/${userId}`);
+  revalidatePath('/community/friends');
+  return { success: true };
+}
+
+export async function cancelFriendRequest(userId: string) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  // Delete pending request
+  await sql`
+    DELETE FROM community_friend_requests
+    WHERE requester_id = ${user.id} AND receiver_id = ${userId} AND status = 'pending'
+  `;
+
+  revalidatePath(`/community/u/${userId}`);
+  revalidatePath('/community/friends');
+  return { success: true };
+}
+
+export async function getFriendRequests() {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  // Get incoming requests
+  const incoming = await sql<{
+    id: string;
+    requester_id: string;
+    username: string;
+    display_name: string;
+    avatar_url: string | null;
+    created_at: string;
+  }>`
+    SELECT 
+      fr.id,
+      fr.requester_id,
+      prof.username,
+      prof.display_name,
+      prof.avatar_url,
+      fr.created_at
+    FROM community_friend_requests fr
+    INNER JOIN community_profiles prof ON prof.user_id = fr.requester_id
+    WHERE fr.receiver_id = ${user.id} AND fr.status = 'pending'
+    ORDER BY fr.created_at DESC
+  `;
+
+  // Get outgoing requests
+  const outgoing = await sql<{
+    id: string;
+    receiver_id: string;
+    username: string;
+    display_name: string;
+    avatar_url: string | null;
+    created_at: string;
+  }>`
+    SELECT 
+      fr.id,
+      fr.receiver_id,
+      prof.username,
+      prof.display_name,
+      prof.avatar_url,
+      fr.created_at
+    FROM community_friend_requests fr
+    INNER JOIN community_profiles prof ON prof.user_id = fr.receiver_id
+    WHERE fr.requester_id = ${user.id} AND fr.status = 'pending'
+    ORDER BY fr.created_at DESC
+  `;
+
+  return {
+    incoming: incoming.rows,
+    outgoing: outgoing.rows,
+  };
+}
+
+export async function getFriends(userId?: string) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  const targetUserId = userId || user.id;
+
+  // Get all friends
+  const friends = await sql<{
+    user_id: string;
+    username: string;
+    display_name: string;
+    avatar_url: string | null;
+    created_at: string;
+  }>`
+    SELECT 
+      CASE 
+        WHEN f.user1_id = ${targetUserId} THEN f.user2_id
+        ELSE f.user1_id
+      END as user_id,
+      prof.username,
+      prof.display_name,
+      prof.avatar_url,
+      f.created_at
+    FROM community_friendships f
+    INNER JOIN community_profiles prof ON prof.user_id = CASE 
+      WHEN f.user1_id = ${targetUserId} THEN f.user2_id
+      ELSE f.user1_id
+    END
+    WHERE f.user1_id = ${targetUserId} OR f.user2_id = ${targetUserId}
+    ORDER BY f.created_at DESC
+  `;
+
+  return friends.rows;
+}
+
+export async function getPostsByUser(userId: string, currentUserId: string): Promise<CommunityPost[]> {
+  // Get user's friends for privacy filtering
+  const userFriends = await sql<{ user_id: string }>`
+    SELECT 
+      CASE 
+        WHEN user1_id = ${currentUserId} THEN user2_id
+        ELSE user1_id
+      END as user_id
+    FROM community_friendships
+    WHERE user1_id = ${currentUserId} OR user2_id = ${currentUserId}
+  `;
+  const friendIds = userFriends.rows.map(r => r.user_id);
+  friendIds.push(currentUserId); // Include self
+
+  const result = await sql`
+    SELECT 
+      p.*,
+      prof.username as author_username,
+      prof.display_name as author_display_name,
+      prof.avatar_url as author_avatar_url,
+      COALESCE(
+        json_agg(pm.media_url ORDER BY pm.order_index) FILTER (WHERE pm.media_url IS NOT NULL),
+        '[]'::json
+      ) as media_urls,
+      CASE WHEN EXISTS (SELECT 1 FROM community_likes l WHERE l.post_id = p.id AND l.user_id = ${currentUserId}) THEN true ELSE false END as is_liked,
+      CASE WHEN EXISTS (SELECT 1 FROM community_bookmarks b WHERE b.post_id = p.id AND b.user_id = ${currentUserId}) THEN true ELSE false END as is_saved,
+      CASE WHEN EXISTS (SELECT 1 FROM community_reposts r WHERE r.original_post_id = p.id AND r.user_id = ${currentUserId}) THEN true ELSE false END as is_reposted,
+      CASE WHEN EXISTS (SELECT 1 FROM community_follows f WHERE f.follower_id = ${currentUserId} AND f.following_id = p.author_id) THEN true ELSE false END as is_following_author,
+      (SELECT COUNT(*)::integer FROM community_likes WHERE post_id = p.id) as actual_like_count,
+      (SELECT COUNT(*)::integer FROM community_reposts WHERE original_post_id = p.id) as actual_repost_count,
+      (SELECT COUNT(*)::integer FROM community_comments WHERE post_id = p.id) as actual_comment_count,
+      (SELECT COUNT(*)::integer FROM community_bookmarks WHERE post_id = p.id) as actual_save_count,
+      r.ingredients, r.instructions, r.servings, r.prep_time_minutes, r.cook_time_minutes,
+      r.total_time_minutes, r.difficulty, r.cuisine, r.diet_tags, r.tags
+    FROM community_posts p
+    INNER JOIN community_profiles prof ON prof.user_id = p.author_id
+    LEFT JOIN community_post_media pm ON pm.post_id = p.id
+    LEFT JOIN community_recipes r ON r.post_id = p.id
+    WHERE p.author_id = ${userId}
+      AND NOT EXISTS (SELECT 1 FROM community_blocks b WHERE (b.blocker_id = ${currentUserId} AND b.blocked_id = p.author_id) OR (b.blocked_id = ${currentUserId} AND b.blocker_id = p.author_id))
+      AND (
+        p.visibility = 'public'
+        OR (p.visibility = 'friends' AND p.author_id = ANY(${friendIds}::uuid[]))
+        OR (p.visibility = 'private' AND p.author_id = ${currentUserId})
+      )
+    GROUP BY p.id, prof.username, prof.display_name, prof.avatar_url, r.ingredients, r.instructions,
+      r.servings, r.prep_time_minutes, r.cook_time_minutes, r.total_time_minutes, r.difficulty, r.cuisine, r.diet_tags, r.tags
+    ORDER BY p.created_at DESC
+  `;
+
+  return result.rows.map((row: any) => ({
+    id: row.id,
+    author_id: row.author_id,
+    author_username: row.author_username,
+    author_display_name: row.author_display_name,
+    author_avatar_url: row.author_avatar_url,
+    title: row.title,
+    caption: row.caption,
+    visibility: row.visibility,
+    like_count: row.actual_like_count ?? row.like_count ?? 0,
+    comment_count: row.actual_comment_count ?? row.comment_count ?? 0,
+    repost_count: row.actual_repost_count ?? row.repost_count ?? 0,
+    save_count: row.actual_save_count ?? row.save_count ?? 0,
+    share_count: row.share_count ?? 0,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    media_urls: Array.isArray(row.media_urls) ? row.media_urls : [],
+    recipe: row.ingredients ? {
+      ingredients: row.ingredients || [],
+      instructions: row.instructions || [],
+      servings: row.servings,
+      prep_time_minutes: row.prep_time_minutes,
+      cook_time_minutes: row.cook_time_minutes,
+      total_time_minutes: row.total_time_minutes,
+      difficulty: row.difficulty,
+      cuisine: row.cuisine,
+      diet_tags: row.diet_tags || [],
+      tags: row.tags || [],
+    } : null,
+    is_liked: row.is_liked,
+    is_saved: row.is_saved,
+    is_reposted: row.is_reposted || false,
+    is_following_author: row.is_following_author,
+  }));
+}
+
+export async function getSavedPosts(userId: string, currentUserId: string): Promise<CommunityPost[]> {
+  // Only allow users to see their own saved posts (saved posts are private)
+  if (userId !== currentUserId) {
+    return [];
+  }
+
+  // Get user's friends for privacy filtering
+  const userFriends = await sql<{ user_id: string }>`
+    SELECT 
+      CASE 
+        WHEN user1_id = ${currentUserId} THEN user2_id
+        ELSE user1_id
+      END as user_id
+    FROM community_friendships
+    WHERE user1_id = ${currentUserId} OR user2_id = ${currentUserId}
+  `;
+  const friendIds = userFriends.rows.map(r => r.user_id);
+  friendIds.push(currentUserId); // Include self
+
+  const result = await sql`
+    SELECT 
+      p.*,
+      prof.username as author_username,
+      prof.display_name as author_display_name,
+      prof.avatar_url as author_avatar_url,
+      COALESCE(
+        json_agg(pm.media_url ORDER BY pm.order_index) FILTER (WHERE pm.media_url IS NOT NULL),
+        '[]'::json
+      ) as media_urls,
+      CASE WHEN EXISTS (SELECT 1 FROM community_likes l WHERE l.post_id = p.id AND l.user_id = ${currentUserId}) THEN true ELSE false END as is_liked,
+      CASE WHEN EXISTS (SELECT 1 FROM community_bookmarks b WHERE b.post_id = p.id AND b.user_id = ${currentUserId}) THEN true ELSE false END as is_saved,
+      CASE WHEN EXISTS (SELECT 1 FROM community_reposts r WHERE r.original_post_id = p.id AND r.user_id = ${currentUserId}) THEN true ELSE false END as is_reposted,
+      CASE WHEN EXISTS (SELECT 1 FROM community_follows f WHERE f.follower_id = ${currentUserId} AND f.following_id = p.author_id) THEN true ELSE false END as is_following_author,
+      (SELECT COUNT(*)::integer FROM community_likes WHERE post_id = p.id) as actual_like_count,
+      (SELECT COUNT(*)::integer FROM community_reposts WHERE original_post_id = p.id) as actual_repost_count,
+      (SELECT COUNT(*)::integer FROM community_comments WHERE post_id = p.id) as actual_comment_count,
+      (SELECT COUNT(*)::integer FROM community_bookmarks WHERE post_id = p.id) as actual_save_count,
+      r.ingredients, r.instructions, r.servings, r.prep_time_minutes, r.cook_time_minutes,
+      r.total_time_minutes, r.difficulty, r.cuisine, r.diet_tags, r.tags
+    FROM community_bookmarks b
+    INNER JOIN community_posts p ON p.id = b.post_id
+    INNER JOIN community_profiles prof ON prof.user_id = p.author_id
+    LEFT JOIN community_post_media pm ON pm.post_id = p.id
+    LEFT JOIN community_recipes r ON r.post_id = p.id
+    WHERE b.user_id = ${currentUserId}
+      AND NOT EXISTS (SELECT 1 FROM community_blocks bl WHERE (bl.blocker_id = ${currentUserId} AND bl.blocked_id = p.author_id) OR (bl.blocked_id = ${currentUserId} AND bl.blocker_id = p.author_id))
+      AND (
+        p.visibility = 'public'
+        OR (p.visibility = 'friends' AND p.author_id = ANY(${friendIds}::uuid[]))
+        OR (p.visibility = 'private' AND p.author_id = ${currentUserId})
+      )
+    GROUP BY p.id, prof.username, prof.display_name, prof.avatar_url, r.ingredients, r.instructions,
+      r.servings, r.prep_time_minutes, r.cook_time_minutes, r.total_time_minutes, r.difficulty, r.cuisine, r.diet_tags, r.tags, b.created_at
+    ORDER BY b.created_at DESC
+  `;
+
+  return result.rows.map((row: any) => ({
+    id: row.id,
+    author_id: row.author_id,
+    author_username: row.author_username,
+    author_display_name: row.author_display_name,
+    author_avatar_url: row.author_avatar_url,
+    title: row.title,
+    caption: row.caption,
+    visibility: row.visibility,
+    like_count: row.actual_like_count ?? row.like_count ?? 0,
+    comment_count: row.actual_comment_count ?? row.comment_count ?? 0,
+    repost_count: row.actual_repost_count ?? row.repost_count ?? 0,
+    save_count: row.actual_save_count ?? row.save_count ?? 0,
+    share_count: row.share_count ?? 0,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    media_urls: Array.isArray(row.media_urls) ? row.media_urls : [],
+    recipe: row.ingredients ? {
+      ingredients: row.ingredients || [],
+      instructions: row.instructions || [],
+      servings: row.servings,
+      prep_time_minutes: row.prep_time_minutes,
+      cook_time_minutes: row.cook_time_minutes,
+      total_time_minutes: row.total_time_minutes,
+      difficulty: row.difficulty,
+      cuisine: row.cuisine,
+      diet_tags: row.diet_tags || [],
+      tags: row.tags || [],
+    } : null,
+    is_liked: row.is_liked,
+    is_saved: row.is_saved,
+    is_reposted: row.is_reposted || false,
+    is_following_author: row.is_following_author,
+  }));
+}
+
+export async function getFriendSuggestions() {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  // Get users who are not already friends, not blocked, and not the current user
+  // Suggest users who have mutual friends or are followed by people you follow
+  const suggestions = await sql<{
+    user_id: string;
+    username: string;
+    display_name: string;
+    avatar_url: string | null;
+    mutual_friends: number;
+  }>`
+    SELECT 
+      prof.user_id,
+      prof.username,
+      prof.display_name,
+      prof.avatar_url,
+      COUNT(DISTINCT mutual.user_id) as mutual_friends
+    FROM community_profiles prof
+    LEFT JOIN community_friendships f1 ON (f1.user1_id = prof.user_id OR f1.user2_id = prof.user_id)
+    LEFT JOIN community_friendships f2 ON (
+      (f2.user1_id = ${user.id} OR f2.user2_id = ${user.id})
+      AND (
+        (f1.user1_id = f2.user1_id AND f1.user2_id != prof.user_id AND f1.user1_id != ${user.id})
+        OR (f1.user1_id = f2.user2_id AND f1.user2_id != prof.user_id AND f1.user1_id != ${user.id})
+        OR (f1.user2_id = f2.user1_id AND f1.user1_id != prof.user_id AND f1.user2_id != ${user.id})
+        OR (f1.user2_id = f2.user2_id AND f1.user1_id != prof.user_id AND f1.user2_id != ${user.id})
+      )
+    )
+    LEFT JOIN community_profiles mutual ON (
+      (mutual.user_id = CASE WHEN f1.user1_id = prof.user_id THEN f1.user2_id ELSE f1.user1_id END)
+      AND (mutual.user_id IN (
+        SELECT CASE WHEN f2.user1_id = ${user.id} THEN f2.user2_id ELSE f2.user1_id END
+        FROM community_friendships f2
+        WHERE f2.user1_id = ${user.id} OR f2.user2_id = ${user.id}
+      ))
+    )
+    WHERE prof.user_id != ${user.id}
+      AND NOT EXISTS (
+        SELECT 1 FROM community_friendships f
+        WHERE (f.user1_id = ${user.id} AND f.user2_id = prof.user_id)
+           OR (f.user1_id = prof.user_id AND f.user2_id = ${user.id})
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM community_blocks b
+        WHERE (b.blocker_id = ${user.id} AND b.blocked_id = prof.user_id)
+           OR (b.blocked_id = ${user.id} AND b.blocker_id = prof.user_id)
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM community_friend_requests fr
+        WHERE (fr.requester_id = ${user.id} AND fr.receiver_id = prof.user_id)
+           OR (fr.requester_id = prof.user_id AND fr.receiver_id = ${user.id})
+      )
+    GROUP BY prof.user_id, prof.username, prof.display_name, prof.avatar_url, prof.created_at
+    ORDER BY mutual_friends DESC, prof.created_at DESC
+    LIMIT 10
+  `;
+
+  return suggestions.rows;
 }
 
 // ============================================

@@ -3,7 +3,7 @@ import DashboardLayout from '@/app/components/DashboardLayout';
 import PostDetail from '../../components/PostDetail';
 import { getPost, getComments } from '../../actions';
 import { getCurrentUser } from '@/lib/auth';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 
 export default async function PostDetailPage({
   params,
@@ -11,6 +11,9 @@ export default async function PostDetailPage({
   params: Promise<{ postId: string }> | { postId: string };
 }) {
   const user = await getCurrentUser();
+  if (!user) {
+    redirect('/login');
+  }
   
   // Handle Next.js 15+ async params
   const resolvedParams = params instanceof Promise ? await params : params;

@@ -31,13 +31,26 @@ export async function POST(req: Request) {
 
     const token = createSessionToken(user.id);
 
+    // Return JSON response with cookie set
+    // The client will handle the redirect after cookie is set
     const res = NextResponse.json({ ok: true });
+    
+    // Set the session cookie with proper attributes
+    // Note: In development, we don't set 'secure' to allow http://localhost
+    // In production, 'secure' will be true
     res.cookies.set(SESSION_COOKIE, token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'lax', // 'lax' allows cookies to be sent with top-level navigations
       path: '/',
-      maxAge: 60 * 60 * 24 * 7,
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    });
+
+    console.log('[Login API] Cookie set successfully:', {
+      cookieName: SESSION_COOKIE,
+      hasToken: !!token,
+      tokenLength: token.length,
+      environment: process.env.NODE_ENV,
     });
 
     return res;

@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Heart, Trash2 } from 'lucide-react';
-import { toggleLikePost } from '../actions';
+import { toggleLikeComment } from '../actions';
 
 interface CommentCardProps {
   comment: {
@@ -31,14 +31,22 @@ export default function CommentCard({ comment, onDelete, currentUserId }: Commen
   const handleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsLiked(!isLiked);
-    setLikeCount(prev => isLiked ? prev - 1 : prev + 1);
+    const newLikedState = !isLiked;
+    setIsLiked(newLikedState);
+    setLikeCount(prev => {
+      const newCount = newLikedState ? prev + 1 : Math.max(0, prev - 1);
+      return newCount;
+    });
     try {
-      // Note: toggleLikePost expects post_id, but we need a toggleLikeComment function
-      // For MVP, we'll skip comment likes or implement separately
+      const result = await toggleLikeComment(comment.id);
+      if (result?.like_count !== undefined) {
+        setLikeCount(result.like_count);
+        setIsLiked(result.is_liked);
+      }
     } catch (error) {
-      setIsLiked(!isLiked);
-      setLikeCount(prev => isLiked ? prev + 1 : prev - 1);
+      setIsLiked(!newLikedState);
+      setLikeCount(comment.like_count);
+      console.error('Failed to toggle comment like:', error);
     }
   };
 
@@ -98,8 +106,9 @@ export default function CommentCard({ comment, onDelete, currentUserId }: Commen
             onClick={handleLike}
             className={`community-comment-action ${isLiked ? 'active' : ''}`}
             aria-label="Like comment"
+            style={{ color: '#ef4444' }}
           >
-            <Heart size={16} fill={isLiked ? 'currentColor' : 'none'} />
+            <Heart size={16} fill={isLiked ? '#ef4444' : 'none'} />
             <span>{likeCount}</span>
           </button>
         </div>
