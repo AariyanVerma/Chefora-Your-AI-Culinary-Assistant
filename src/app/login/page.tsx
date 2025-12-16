@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import dynamic from 'next/dynamic';
 
 const Spline = dynamic(() => import('@splinetool/react-spline').then((mod) => mod.default), {
@@ -1279,13 +1280,12 @@ export default function LoginPage() {
               Continue with Google
             </button>
 
-              <button
-                type="button"
+              <Link
+                href="/auth/forgot-password"
                 className="auth-forgot-link"
-                onClick={() => alert('Forgot password feature coming soon')}
               >
                 Forgot password?
-              </button>
+              </Link>
           </form>
 
             <div className="auth-footer">

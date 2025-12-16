@@ -57,9 +57,18 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: '**.google.com',
       },
+      // Allow images from any domain (for Google Custom Search API results)
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+      {
+        protocol: 'http',
+        hostname: '**',
+      },
     ],
     // Allow unoptimized images from any domain (for Google search results)
-    unoptimized: false,
+    unoptimized: true,
   },
 };
 

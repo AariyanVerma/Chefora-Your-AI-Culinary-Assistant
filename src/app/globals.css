@@ -150,7 +150,13 @@ html::-webkit-scrollbar,body::-webkit-scrollbar{display:none}
   background-color: rgba(0, 0, 0, 0.45) !important;
   backdrop-filter: blur(20px) saturate(150%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(150%) !important;
-  transition: background 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease !important;
+  border: 1px solid rgba(103, 232, 249, 0.3) !important;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 15px rgba(103, 232, 249, 0.2) !important;
+  transition: background 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease,
+              border-color 0.3s ease, box-shadow 0.3s ease !important;
 }
 
 /* Hover effect: Reduce transparency and increase color richness */
@@ -173,6 +179,13 @@ html::-webkit-scrollbar,body::-webkit-scrollbar{display:none}
   background-color: rgba(0, 0, 0, 0.75) !important;
   backdrop-filter: blur(20px) saturate(200%) contrast(110%) brightness(105%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(200%) contrast(110%) brightness(105%) !important;
+  border-color: rgba(103, 232, 249, 0.6) !important;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 30px rgba(103, 232, 249, 0.5),
+    0 0 60px rgba(103, 232, 249, 0.3),
+    0 0 90px rgba(103, 232, 249, 0.15) !important;
 }
 
 /* CRITICAL: Remove glass pseudo-elements that add gradient overlays - These are blocking pure black */
@@ -294,11 +307,13 @@ html::-webkit-scrollbar,body::-webkit-scrollbar{display:none}
   background-color: rgba(0, 0, 0, 0.45) !important;
   backdrop-filter: blur(20px) saturate(150%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(150%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border: 1px solid rgba(103, 232, 249, 0.3) !important;
   box-shadow: 
     0 8px 32px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(0, 0, 0, 0.1) !important;
-  transition: background 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease !important;
+    inset 0 1px 0 rgba(0, 0, 0, 0.1),
+    0 0 15px rgba(103, 232, 249, 0.2) !important;
+  transition: background 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease,
+              border-color 0.3s ease, box-shadow 0.3s ease !important;
 }
 
 /* Hover effect: Reduce transparency and increase color richness */
@@ -342,6 +357,13 @@ html::-webkit-scrollbar,body::-webkit-scrollbar{display:none}
   background-color: rgba(0, 0, 0, 0.75) !important;
   backdrop-filter: blur(20px) saturate(200%) contrast(110%) brightness(105%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(200%) contrast(110%) brightness(105%) !important;
+  border-color: rgba(103, 232, 249, 0.6) !important;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 30px rgba(103, 232, 249, 0.5),
+    0 0 60px rgba(103, 232, 249, 0.3),
+    0 0 90px rgba(103, 232, 249, 0.15) !important;
 }
 
 
@@ -1240,11 +1262,13 @@ header.glass.ios.solid:hover,
   background-color: rgba(0, 0, 0, 0.45) !important;
   backdrop-filter: blur(20px) saturate(150%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(150%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border: 1px solid rgba(103, 232, 249, 0.3) !important;
   box-shadow: 
     0 8px 32px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(0, 0, 0, 0.1) !important;
-  transition: background 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease !important;
+    inset 0 1px 0 rgba(0, 0, 0, 0.1),
+    0 0 15px rgba(103, 232, 249, 0.2) !important;
+  transition: background 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease,
+              border-color 0.3s ease, box-shadow 0.3s ease !important;
 }
 
 /* Glassy look for search bar */
@@ -5739,6 +5763,24 @@ ul.ingredient-list.ai-result-list li {
   position: relative;
 }
 
+.dashboard-container {
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+
+.dashboard-main .cardBody,
+.dashboard-layout .cardBody {
+  width: 100%;
+  max-width: 100%;
+}
+
+.dashboard-main .cardTitle,
+.dashboard-layout .cardTitle {
+  color: #67e8f9;
+}
+
 .dashboard-top-header {
   display: flex;
   align-items: center;
@@ -5876,11 +5918,13 @@ ul.ingredient-list.ai-result-list li {
   background-color: rgba(0, 0, 0, 0.45) !important;
   backdrop-filter: blur(20px) saturate(150%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(150%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border: 1px solid rgba(103, 232, 249, 0.3) !important;
   box-shadow: 
     0 8px 32px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(0, 0, 0, 0.1) !important;
-  transition: background 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease !important;
+    inset 0 1px 0 rgba(0, 0, 0, 0.1),
+    0 0 15px rgba(103, 232, 249, 0.2) !important;
+  transition: background 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease,
+              border-color 0.3s ease, box-shadow 0.3s ease !important;
 }
 
 .dashboard-profile-card .glass.ios.solid.card {
@@ -5901,6 +5945,13 @@ ul.ingredient-list.ai-result-list li {
   background-color: rgba(0, 0, 0, 0.75) !important;
   backdrop-filter: blur(20px) saturate(200%) contrast(110%) brightness(105%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(200%) contrast(110%) brightness(105%) !important;
+  border-color: rgba(103, 232, 249, 0.6) !important;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 30px rgba(103, 232, 249, 0.5),
+    0 0 60px rgba(103, 232, 249, 0.3),
+    0 0 90px rgba(103, 232, 249, 0.15) !important;
 }
 
 .dashboard-profile-card:hover {
@@ -6114,8 +6165,13 @@ ul.ingredient-list.ai-result-list li {
   background-color: rgba(0, 0, 0, 0.45) !important;
   backdrop-filter: blur(20px) saturate(150%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(150%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  transition: background 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease !important;
+  border: 1px solid rgba(103, 232, 249, 0.3) !important;
+  transition: background 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease,
+              border-color 0.3s ease, box-shadow 0.3s ease !important;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 15px rgba(103, 232, 249, 0.2) !important;
 }
 
 .dashboard-hero-card:hover .card {
@@ -6123,6 +6179,13 @@ ul.ingredient-list.ai-result-list li {
   background-color: rgba(0, 0, 0, 0.75) !important;
   backdrop-filter: blur(20px) saturate(200%) contrast(110%) brightness(105%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(200%) contrast(110%) brightness(105%) !important;
+  border-color: rgba(103, 232, 249, 0.6) !important;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 30px rgba(103, 232, 249, 0.5),
+    0 0 60px rgba(103, 232, 249, 0.3),
+    0 0 90px rgba(103, 232, 249, 0.15) !important;
 }
 
 .dashboard-hero-card:hover {
@@ -6153,8 +6216,78 @@ ul.ingredient-list.ai-result-list li {
   background-color: rgba(0, 0, 0, 0.45) !important;
   backdrop-filter: blur(20px) saturate(150%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(150%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  transition: background 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease !important;
+  border: 1px solid rgba(103, 232, 249, 0.3) !important;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 15px rgba(103, 232, 249, 0.2) !important;
+  transition: background 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease,
+              border-color 0.3s ease, box-shadow 0.3s ease !important;
+}
+
+/* Recipe Modal Card Styling - Match Dashboard Cards */
+.dashboard-recipe-modal-card {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+              filter 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dashboard-recipe-modal-card .card-background {
+  border-radius: 20px;
+  backdrop-filter: blur(0px) !important;
+  -webkit-backdrop-filter: blur(0px) !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+.dashboard-recipe-modal-card .glass.card {
+  background: rgba(0, 0, 0, 0.45) !important;
+  background-color: rgba(0, 0, 0, 0.45) !important;
+  backdrop-filter: blur(20px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(150%) !important;
+  border: 1px solid rgba(103, 232, 249, 0.3) !important;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(0, 0, 0, 0.1),
+    0 0 15px rgba(103, 232, 249, 0.2) !important;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(0, 0, 0, 0.1) !important;
+  transition: background 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease,
+              border-color 0.3s ease, box-shadow 0.3s ease !important;
+}
+
+.dashboard-recipe-modal-card .glass.card::before,
+.dashboard-recipe-modal-card .glass.card::after {
+  display: none !important;
+  content: none !important;
+  background: none !important;
+}
+
+/* Hover Effects - Neon Glow, Lift, Scale */
+.dashboard-recipe-modal-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  filter: drop-shadow(0 8px 32px rgba(103, 232, 249, 0.3))
+          drop-shadow(0 0 20px rgba(103, 232, 249, 0.2));
+}
+
+.dashboard-recipe-modal-card:hover .glass.card {
+  background: rgba(0, 0, 0, 0.75) !important;
+  background-color: rgba(0, 0, 0, 0.75) !important;
+  backdrop-filter: blur(20px) saturate(200%) contrast(110%) brightness(105%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(200%) contrast(110%) brightness(105%) !important;
+  border-color: rgba(103, 232, 249, 0.4) !important;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 30px rgba(103, 232, 249, 0.2) !important;
+}
+
+/* Neon Title Text on Hover */
+.dashboard-recipe-modal-card:hover .cardTitle {
+  background: linear-gradient(135deg, #67e8f9, #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .dashboard-pantry-card:hover .card {
@@ -6162,6 +6295,13 @@ ul.ingredient-list.ai-result-list li {
   background-color: rgba(0, 0, 0, 0.75) !important;
   backdrop-filter: blur(20px) saturate(200%) contrast(110%) brightness(105%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(200%) contrast(110%) brightness(105%) !important;
+  border-color: rgba(103, 232, 249, 0.6) !important;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 30px rgba(103, 232, 249, 0.5),
+    0 0 60px rgba(103, 232, 249, 0.3),
+    0 0 90px rgba(103, 232, 249, 0.15) !important;
 }
 
 .dashboard-pantry-card .cardBody {
@@ -6204,6 +6344,13 @@ ul.ingredient-list.ai-result-list li {
   background-color: rgba(0, 0, 0, 0.75) !important;
   backdrop-filter: blur(20px) saturate(200%) contrast(110%) brightness(105%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(200%) contrast(110%) brightness(105%) !important;
+  border-color: rgba(103, 232, 249, 0.6) !important;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 30px rgba(103, 232, 249, 0.5),
+    0 0 60px rgba(103, 232, 249, 0.3),
+    0 0 90px rgba(103, 232, 249, 0.15) !important;
 }
 
 .dashboard-planner-card .cardBody {
@@ -6246,6 +6393,13 @@ ul.ingredient-list.ai-result-list li {
   background-color: rgba(0, 0, 0, 0.75) !important;
   backdrop-filter: blur(20px) saturate(200%) contrast(110%) brightness(105%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(200%) contrast(110%) brightness(105%) !important;
+  border-color: rgba(103, 232, 249, 0.6) !important;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 30px rgba(103, 232, 249, 0.5),
+    0 0 60px rgba(103, 232, 249, 0.3),
+    0 0 90px rgba(103, 232, 249, 0.15) !important;
 }
 
 .dashboard-actions-card:hover {
@@ -6643,7 +6797,13 @@ ul.ingredient-list.ai-result-list li {
   background-color: rgba(0, 0, 0, 0.45) !important;
   backdrop-filter: blur(20px) saturate(150%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(150%) !important;
-  transition: background 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease !important;
+  border: 1px solid rgba(103, 232, 249, 0.3) !important;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 15px rgba(103, 232, 249, 0.2) !important;
+  transition: background 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease,
+              border-color 0.3s ease, box-shadow 0.3s ease !important;
   min-height: 80px;
   box-sizing: border-box;
 }
@@ -6653,6 +6813,13 @@ ul.ingredient-list.ai-result-list li {
   background-color: rgba(0, 0, 0, 0.75) !important;
   backdrop-filter: blur(20px) saturate(200%) contrast(110%) brightness(105%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(200%) contrast(110%) brightness(105%) !important;
+  border-color: rgba(103, 232, 249, 0.6) !important;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 30px rgba(103, 232, 249, 0.5),
+    0 0 60px rgba(103, 232, 249, 0.3),
+    0 0 90px rgba(103, 232, 249, 0.15) !important;
 }
 
 /* Force translucent black effect for all dashboard cards - highest specificity */
@@ -6666,10 +6833,13 @@ ul.ingredient-list.ai-result-list li {
   background-color: rgba(0, 0, 0, 0.45) !important;
   backdrop-filter: blur(20px) saturate(150%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(150%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border: 1px solid rgba(103, 232, 249, 0.3) !important;
   box-shadow: 
     0 8px 32px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 15px rgba(103, 232, 249, 0.2) !important;
+  transition: background 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease,
+              border-color 0.3s ease, box-shadow 0.3s ease !important;
 }
 
 .dashboard-stat-card::before {
@@ -7012,10 +7182,9 @@ ul.ingredient-list.ai-result-list li {
 .dashboard-pantry-card .cardTitle,
 .dashboard-planner-card .cardTitle,
 .dashboard-actions-card .cardTitle {
-  color: #ffffff;
+  color: #67e8f9;
   opacity: 1;
   font-weight: 700;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
 }
 
 .dashboard-stat-value {

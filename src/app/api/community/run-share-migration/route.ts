@@ -1,9 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sql } from '@vercel/postgres';
+import { sql } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 
 // This endpoint runs the share_count migration
 // Only run this once to add share_count functionality
+
+// GET handler - provides instructions on how to use the endpoint
+export async function GET(request: NextRequest) {
+  return NextResponse.json({
+    message: 'This endpoint requires a POST request.',
+    instructions: [
+      'Use curl: curl -X POST http://localhost:3000/api/community/run-share-migration',
+      'Or use a REST client like Postman to send a POST request',
+      'Or use the browser console: fetch("/api/community/run-share-migration", { method: "POST" })'
+    ],
+    note: 'You must be logged in to run this migration.'
+  }, { status: 405 });
+}
+
 export async function POST(request: NextRequest) {
   try {
     const user = await getCurrentUser();
