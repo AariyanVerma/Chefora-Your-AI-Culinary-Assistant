@@ -10,3 +10,7 @@ ADD COLUMN IF NOT EXISTS totp_secret TEXT;
 
 -- Note: totp_secret will be NULL if 2FA is not enabled
 -- When 2FA is enabled, this will store the base32 encoded secret key
+
+
+
+

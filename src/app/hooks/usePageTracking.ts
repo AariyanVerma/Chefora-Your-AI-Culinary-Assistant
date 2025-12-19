@@ -63,3 +63,7 @@ export async function trackRecipeView(recipeData: {
     console.error('Failed to track recipe view:', err);
   }
 }
+
+
+
+

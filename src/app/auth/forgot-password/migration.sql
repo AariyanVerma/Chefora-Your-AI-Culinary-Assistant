@@ -20,3 +20,7 @@ CREATE INDEX IF NOT EXISTS idx_password_reset_codes_expires_at ON password_reset
 
 -- Clean up expired codes periodically (you can run this manually or set up a cron job)
 -- DELETE FROM password_reset_codes WHERE expires_at < NOW();
+
+
+
+
