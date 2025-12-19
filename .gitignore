@@ -39,3 +39,29 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Node / web common
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.env
+.env.*
+
+
+# Build outputs (common frameworks)
+dist/
+build/
+out/
+.next/
+.cache/
+coverage/
+
+# If you have zip exports inside the project
+*.zip
