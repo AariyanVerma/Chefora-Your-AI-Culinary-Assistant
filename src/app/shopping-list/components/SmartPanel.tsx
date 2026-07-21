@@ -36,7 +36,7 @@ export default function SmartPanel({ listId, items, onRefresh, onAisleClick, sel
     if (listId) {
       loadAllSuggestions();
     }
-  }, [listId, items.length]); // Reload when listId changes or items are added
+  }, [listId, items.length]); 
 
   const loadAllSuggestions = async () => {
     if (!listId) return;
@@ -79,46 +79,46 @@ export default function SmartPanel({ listId, items, onRefresh, onAisleClick, sel
 
   const getCategoryColor = (category: string): string => {
     const colors: Record<string, string> = {
-      'Produce': '#22c55e', // green
-      'Dairy': '#3b82f6', // blue
-      'Meat': '#ef4444', // red
-      'Poultry': '#f97316', // orange
-      'Seafood': '#06b6d4', // cyan
-      'Frozen': '#8b5cf6', // purple
-      'Beverages': '#ec4899', // pink
-      'Snacks': '#fbbf24', // yellow
-      'Bakery': '#d97706', // amber
-      'Pantry': '#84cc16', // lime
-      'Grains': '#eab308', // yellow
-      'Cereal': '#f59e0b', // amber
-      'Pasta': '#f97316', // orange
-      'Rice': '#fbbf24', // yellow
-      'Canned Goods': '#64748b', // slate
-      'Condiments': '#a855f7', // purple
-      'Sauces': '#dc2626', // red
-      'Spices': '#ea580c', // orange
-      'Herbs': '#16a34a', // green
-      'Oils': '#facc15', // yellow
-      'Vinegar': '#7c3aed', // violet
-      'Nuts': '#d97706', // amber
-      'Seeds': '#65a30d', // lime
-      'Dried Fruits': '#f59e0b', // amber
-      'Sweets': '#ec4899', // pink
-      'Chocolate': '#7c2d12', // brown
-      'Coffee': '#78350f', // brown
-      'Tea': '#166534', // green
-      'Baby Food': '#f472b6', // pink
-      'Pet Food': '#6b7280', // gray
-      'Cleaning Supplies': '#0ea5e9', // sky
-      'Personal Care': '#a855f7', // purple
-      'Other': '#6b7280', // gray
+      'Produce': '#22c55e', 
+      'Dairy': '#3b82f6', 
+      'Meat': '#ef4444', 
+      'Poultry': '#f97316', 
+      'Seafood': '#06b6d4', 
+      'Frozen': '#8b5cf6', 
+      'Beverages': '#ec4899', 
+      'Snacks': '#fbbf24', 
+      'Bakery': '#d97706', 
+      'Pantry': '#84cc16', 
+      'Grains': '#eab308', 
+      'Cereal': '#f59e0b', 
+      'Pasta': '#f97316', 
+      'Rice': '#fbbf24', 
+      'Canned Goods': '#64748b', 
+      'Condiments': '#a855f7', 
+      'Sauces': '#dc2626', 
+      'Spices': '#ea580c', 
+      'Herbs': '#16a34a', 
+      'Oils': '#facc15', 
+      'Vinegar': '#7c3aed', 
+      'Nuts': '#d97706', 
+      'Seeds': '#65a30d', 
+      'Dried Fruits': '#f59e0b', 
+      'Sweets': '#ec4899', 
+      'Chocolate': '#7c2d12', 
+      'Coffee': '#78350f', 
+      'Tea': '#166534', 
+      'Baby Food': '#f472b6', 
+      'Pet Food': '#6b7280', 
+      'Cleaning Supplies': '#0ea5e9', 
+      'Personal Care': '#a855f7', 
+      'Other': '#6b7280', 
     };
     return colors[category] || '#6b7280';
   };
 
   const getAisleOrder = () => {
-    const aisles = [...new Set(items.map(item => item.aisle).filter(Boolean))];
-    // Simple ordering - you could make this smarter
+    const aisles = [...new Set(items.map(item => item.aisle).filter((aisle): aisle is string => Boolean(aisle)))];
+    
     const order = ['Produce', 'Dairy', 'Meat', 'Pantry', 'Frozen', 'Beverages'];
     return aisles.sort((a, b) => {
       const aIndex = order.indexOf(a || '');
@@ -138,9 +138,10 @@ export default function SmartPanel({ listId, items, onRefresh, onAisleClick, sel
         name: itemName,
         quantity: 1,
         unit: 'pcs',
+        priority: 'medium',
         pantry_item_id: pantryItemId,
       });
-      await loadAllSuggestions(); // Reload suggestions after adding
+      await loadAllSuggestions(); 
       onRefresh();
     } catch (error) {
       console.error('Failed to add item:', error);
@@ -159,9 +160,10 @@ export default function SmartPanel({ listId, items, onRefresh, onAisleClick, sel
         name: itemName,
         quantity: 1,
         unit: 'pcs',
+        priority: 'medium',
         category: category || undefined,
       });
-      await loadAllSuggestions(); // Reload suggestions after adding
+      await loadAllSuggestions(); 
       onRefresh();
     } catch (error) {
       console.error('Failed to add item:', error);
@@ -182,7 +184,7 @@ export default function SmartPanel({ listId, items, onRefresh, onAisleClick, sel
 
   return (
     <div className="shopping-smart-panel-content">
-      {/* Smart Suggestions */}
+      {}
       <div className="shopping-smart-card">
         <h3 className="shopping-smart-title">
           <span className="shopping-smart-icon">💡</span>
@@ -319,7 +321,7 @@ export default function SmartPanel({ listId, items, onRefresh, onAisleClick, sel
         </div>
       </div>
 
-      {/* Budget & Totals */}
+      {}
       <div className="shopping-smart-card">
         <h3 className="shopping-smart-title">
           <span className="shopping-smart-icon">💰</span>
@@ -332,7 +334,7 @@ export default function SmartPanel({ listId, items, onRefresh, onAisleClick, sel
           </div>
           <div className="shopping-budget-progress" style={{ position: 'relative', width: '100%' }}>
             {(() => {
-              const budgetLimit = 200; // Default budget limit
+              const budgetLimit = 200; 
               const percentage = Math.min(100, (Number(total) / budgetLimit) * 100);
               const categoryTotals = getCategoryTotals();
               const sortedCategories = Object.entries(categoryTotals)
@@ -360,7 +362,6 @@ export default function SmartPanel({ listId, items, onRefresh, onAisleClick, sel
                   const left = accumulatedWidth;
                   accumulatedWidth += segmentWidth;
                   
-                  // Skip segments that are too small to be visible (less than 0.5%)
                   if (segmentWidth < 0.5) {
                     return null;
                   }
@@ -427,7 +428,7 @@ export default function SmartPanel({ listId, items, onRefresh, onAisleClick, sel
         )}
       </div>
 
-      {/* Shopping Route */}
+      {}
       {aisleOrder.length > 0 && (
         <div className="shopping-smart-card">
           <h3 className="shopping-smart-title">
@@ -490,6 +491,3 @@ export default function SmartPanel({ listId, items, onRefresh, onAisleClick, sel
     </div>
   );
 }
-
-
-

@@ -51,14 +51,12 @@ export default function SettingsPage() {
     isPost?: boolean;
   }>>([]);
   
-  // Form states
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [country, setCountry] = useState('');
   const [timeZone, setTimeZone] = useState('');
   const [cookFrequency, setCookFrequency] = useState('');
   
-  // Profile form states
   const [dietaryProfile, setDietaryProfile] = useState('');
   const [allergies, setAllergies] = useState<string[]>([]);
   const [skillLevel, setSkillLevel] = useState('');
@@ -67,13 +65,11 @@ export default function SettingsPage() {
   const [maxPrepTime, setMaxPrepTime] = useState<number | null>(null);
   const [persona, setPersona] = useState('');
   
-  // Password change states
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
 
-  // 2FA states
   const [twoFAEnabled, setTwoFAEnabled] = useState(false);
   const [twoFALoading, setTwoFALoading] = useState(false);
   const [twoFASetup, setTwoFASetup] = useState<{
@@ -113,7 +109,6 @@ export default function SettingsPage() {
         });
         setRecentPages(data.recentPages || []);
         
-        // Fetch community profile for avatar
         if (data.user?.id) {
           try {
             const profileRes = await fetch(`/api/community/profile?userId=${data.user.id}`);
@@ -141,7 +136,6 @@ export default function SettingsPage() {
         setUser(data.user);
         setProfile(data.profile || null);
         
-        // Populate form fields
         if (data.user) {
           setName(data.user.name || '');
           setEmail(data.user.email || '');
@@ -192,7 +186,7 @@ export default function SettingsPage() {
 
       if (response.ok) {
         setMessage({ type: 'success', text: data.message || 'Profile updated successfully!' });
-        await fetchUserData(); // Refresh data
+        await fetchUserData(); 
       } else {
         setMessage({ type: 'error', text: data.error || 'Failed to update profile' });
       }
@@ -228,7 +222,7 @@ export default function SettingsPage() {
 
       if (response.ok) {
         setMessage({ type: 'success', text: data.message || 'User profile updated successfully!' });
-        await fetchUserData(); // Refresh data
+        await fetchUserData(); 
       } else {
         setMessage({ type: 'error', text: data.error || 'Failed to update user profile' });
       }
@@ -260,7 +254,7 @@ export default function SettingsPage() {
 
       if (response.ok) {
         setMessage({ type: 'success', text: data.message || 'Password changed successfully!' });
-        // Clear password fields
+        
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
@@ -372,7 +366,7 @@ export default function SettingsPage() {
 
   return (
     <>
-      {/* Background system matching main app */}
+      {}
       <div className="bg-base" aria-hidden />
       <div className="bg-anim" aria-hidden>
         <span
@@ -393,7 +387,7 @@ export default function SettingsPage() {
         />
       </div>
 
-      {/* Sidebar - Outside scrollable container */}
+      {}
       <aside 
         className={`dashboard-sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}
       >
@@ -457,7 +451,7 @@ export default function SettingsPage() {
             </Link>
           </nav>
           
-          {/* Recent Activity Section */}
+          {}
           <div className="dashboard-sidebar-section">
             <div className="dashboard-sidebar-section-header">
               <span>Recent</span>
@@ -502,7 +496,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* Quick Stats Section */}
+          {}
           <div className="dashboard-sidebar-section">
             <div className="dashboard-sidebar-section-header">
               <span>Quick Stats</span>
@@ -520,7 +514,7 @@ export default function SettingsPage() {
           </div>
         </aside>
 
-        {/* Sidebar Overlay */}
+        {}
         {sidebarOpen && (
           <div 
             className="dashboard-sidebar-overlay" 
@@ -528,7 +522,7 @@ export default function SettingsPage() {
           />
         )}
 
-        {/* Hamburger Menu Button */}
+        {}
         <button 
           className="dashboard-sidebar-toggle"
           onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -540,11 +534,11 @@ export default function SettingsPage() {
         </button>
 
       <div className="dashboard-layout layer-content">
-        {/* Main Content */}
+        {}
         <main className="dashboard-main">
-          {/* Top Header */}
+          {}
           <header className="dashboard-top-header">
-            {/* Logo - Centered in header */}
+            {}
             <div className="dashboard-logo-center-screen">
               <Link href="/dashboard">
                 <Image
@@ -650,7 +644,7 @@ export default function SettingsPage() {
           </header>
 
         <div className="dashboard-container">
-          {/* Message Display */}
+          {}
           {message && (
             <div
               className="card-wrapper"
@@ -676,7 +670,7 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {/* Page Header */}
+          {}
           <div className="card-wrapper" style={{ width: '100%', margin: '0 auto' }}>
             <div className="card-background"></div>
             <div className="glass card card-mount">
@@ -692,7 +686,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* User Information Section */}
+          {}
           <div className="card-wrapper dashboard-stat-card" style={{ width: '100%', margin: '1.5rem auto 0' }}>
             <div className="card-background"></div>
             <div className="glass card card-mount">
@@ -827,7 +821,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* User Profile Section (Dietary, Skills, etc.) */}
+          {}
           <div className="card-wrapper dashboard-stat-card" style={{ width: '100%', margin: '1.5rem auto 0' }}>
             <div className="card-background"></div>
             <div className="glass card card-mount">
@@ -921,7 +915,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* Change Password Section */}
+          {}
           <div className="card-wrapper dashboard-stat-card" style={{ width: '100%', margin: '1.5rem auto 0' }}>
             <div className="card-background"></div>
             <div className="glass card card-mount">
@@ -1015,7 +1009,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* Two-Factor Authentication Section */}
+          {}
           <div className="card-wrapper dashboard-stat-card" style={{ width: '100%', margin: '1.5rem auto 0' }}>
             <div className="card-background"></div>
             <div className="glass card card-mount">
@@ -1189,7 +1183,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* Account Info Display */}
+          {}
           {user && (
             <div className="card-wrapper dashboard-stat-card" style={{ width: '100%', margin: '1.5rem auto 2rem' }}>
               <div className="card-background"></div>
@@ -1224,7 +1218,3 @@ export default function SettingsPage() {
     </>
   );
 }
-
-
-
-

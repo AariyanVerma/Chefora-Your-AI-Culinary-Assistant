@@ -4,26 +4,22 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import gsap from "gsap";
 
-const BASE_PARTICLE_COUNT = 30000; // core / logo / text
-const EXTRA_PARTICLE_COUNT = 40000; // infalling from outside
+const BASE_PARTICLE_COUNT = 30000; 
+const EXTRA_PARTICLE_COUNT = 40000; 
 const PARTICLE_COUNT = BASE_PARTICLE_COUNT + EXTRA_PARTICLE_COUNT;
 
 const SPHERE_RADIUS = 7.0;
 
-// black-hole timing
-const CORE_COLLAPSE_DURATION = 1.0; // dense sphere + hollowing
-const INFALL_DURATION = 2.2; // outer 40k spiralling in
-const EXTRA_WAIT_BEFORE_EXPLOSION = 2.0; // hold after infall before big-bang
+const CORE_COLLAPSE_DURATION = 1.0; 
+const INFALL_DURATION = 2.2; 
+const EXTRA_WAIT_BEFORE_EXPLOSION = 2.0; 
 
-// Path to the logo image used for particles
 const LOGO_IMAGE_URL = "/assets/Chefora-logo-particles.png";
 
-// Fractions for logo + title + subtitle; rest is starfield (only for BASE)
 const LOGO_FRACTION = 0.22;
 const TITLE_FRACTION = 0.28;
 const SUBTITLE_FRACTION = 0.18;
 
-/** Sample opaque pixels from an image and turn them into 3D positions */
 async function createLogoTargets(
   url: string,
   count: number,
@@ -93,7 +89,6 @@ async function createLogoTargets(
   return result;
 }
 
-/** Draw text into an off-screen canvas and sample it as particles */
 function createTextTargets(
   text: string,
   count: number,
@@ -128,8 +123,8 @@ function createTextTargets(
   const samples: number[] = [];
   const step = 3;
 
-  const sx = scaleX ?? scale * 1.25; // wider
-  const sy = scaleY ?? scale * 0.65; // shorter
+  const sx = scaleX ?? scale * 1.25; 
+  const sy = scaleY ?? scale * 0.65; 
 
   for (let y = 0; y < canvas.height; y += step) {
     for (let x = 0; x < canvas.width; x += step) {
@@ -157,7 +152,6 @@ function createTextTargets(
   return result;
 }
 
-/** Fill a spherical target */
 function fillSphereTargets(targetArray: Float32Array, radius: number) {
   const count = targetArray.length / 3;
   for (let i = 0; i < count; i++) {
@@ -239,7 +233,6 @@ export default function CheforaParticleHero() {
     const points = new THREE.Points(geometry, material);
     scene.add(points);
 
-    // === TARGET ARRAYS FOR FIRST 30K ======================================
     const logoCount = Math.floor(BASE_PARTICLE_COUNT * LOGO_FRACTION);
     const titleCount = Math.floor(BASE_PARTICLE_COUNT * TITLE_FRACTION);
     const subtitleCount = Math.floor(BASE_PARTICLE_COUNT * SUBTITLE_FRACTION);
@@ -334,7 +327,6 @@ export default function CheforaParticleHero() {
       );
     }
 
-    // === STATE / INTERACTION ==============================================
     const clock = new THREE.Clock();
 
     type Mode =
@@ -363,13 +355,12 @@ export default function CheforaParticleHero() {
     let isPulsing = false;
     let isCorePhase = false;
 
-    // Black-hole particle animation state
     let collapseClock = 0;
     let spinClock = 0;
     let spinInitialized = false;
     const ringRadius = new Float32Array(PARTICLE_COUNT);
     const ringAngle = new Float32Array(PARTICLE_COUNT);
-    const ringBand = new Float32Array(PARTICLE_COUNT); // kept for future tweaks
+    const ringBand = new Float32Array(PARTICLE_COUNT); 
 
     function onPointerMove(e: PointerEvent) {
       const c = canvasRef.current;
@@ -428,7 +419,6 @@ export default function CheforaParticleHero() {
       posAttr.needsUpdate = true;
     }
 
-    // Prepare positions + velocities for the big-bang explosion from center
     function prepareExplosionFromCenter() {
       const posAttr = geometry.attributes.position as THREE.BufferAttribute;
       const pos = posAttr.array as Float32Array;
@@ -460,7 +450,6 @@ export default function CheforaParticleHero() {
       material.opacity = 1;
       material.color.copy(bigBangColor);
 
-      // cinematic zoom-out on big bang
       cameraTimeline?.kill();
       cameraTimeline = gsap.timeline();
       cameraTimeline.to(cameraTarget, {
@@ -491,7 +480,6 @@ export default function CheforaParticleHero() {
         ease: "power2.out",
       });
 
-      // camera cinematic path while black hole forms & accretes
       cameraTimeline?.kill();
       cameraTarget.x = camera.position.x;
       cameraTarget.y = camera.position.y;
@@ -600,7 +588,6 @@ export default function CheforaParticleHero() {
       const pos = geometry.attributes.position.array as Float32Array;
       const from = sphereTargetsFull;
 
-      // First 30k: initial breathing sphere
       for (let i = 0; i < BASE_PARTICLE_COUNT; i++) {
         const i3 = i * 3;
         pos[i3] = from[i3] + (Math.random() - 0.5) * 0.5;
@@ -609,12 +596,11 @@ export default function CheforaParticleHero() {
         ringBand[i] = (Math.random() - 0.5) * 0.8;
       }
 
-      // Extra 40k: placed outside main viewport so they "fall in" later
       for (let i = BASE_PARTICLE_COUNT; i < PARTICLE_COUNT; i++) {
         const i3 = i * 3;
         const theta = Math.acos(2 * Math.random() - 1);
         const phi = 2 * Math.PI * Math.random();
-        const r = 60 + Math.random() * 40; // far ring around scene
+        const r = 60 + Math.random() * 40; 
 
         pos[i3] = r * Math.sin(theta) * Math.cos(phi);
         pos[i3 + 1] = r * Math.cos(theta);
@@ -624,7 +610,6 @@ export default function CheforaParticleHero() {
       geometry.attributes.position.needsUpdate = true;
     })();
 
-    // === ANIMATION LOOP ====================================================
     let rafId: number;
 
     function animate() {
@@ -633,14 +618,13 @@ export default function CheforaParticleHero() {
       const dt = clock.getDelta();
       const elapsed = clock.getElapsedTime();
 
-      // ---- CAMERA LOGIC ---------------------------------------------------
       const isBlackholePhase =
         mode === "blackholeCollapse" ||
         mode === "blackholeSpin" ||
         mode === "explode";
 
       if (isBlackholePhase) {
-        // cinematic camera following the black hole
+        
         camera.position.x += (cameraTarget.x - camera.position.x) * 0.08;
         camera.position.y += (cameraTarget.y - camera.position.y) * 0.08;
         camera.position.z += (cameraTarget.z - camera.position.z) * 0.08;
@@ -648,7 +632,7 @@ export default function CheforaParticleHero() {
         points.position.x += (0 - points.position.x) * 0.25;
         points.position.y += (0 - points.position.y) * 0.25;
       } else {
-        // interactive camera for sphere + logoText modes
+        
         cursorEnergy = Math.max(0, cursorEnergy - dt * 0.6);
         const waveStrength = 0.4 + cursorEnergy * 0.8;
         const wobbleX = Math.sin(elapsed * 1.8) * waveStrength;
@@ -672,8 +656,6 @@ export default function CheforaParticleHero() {
 
         camera.lookAt(0, 0, 0);
       }
-
-      // ---------------------------------------------------------------------
 
       if (mode === "sphere" && !isPulsing && !isCorePhase) {
         const breath = 1 + Math.sin(elapsed * 0.9) * 0.12;
@@ -708,7 +690,6 @@ export default function CheforaParticleHero() {
         points.rotation.z += (0 - points.rotation.z) * 0.3;
       }
 
-      // === BLACK HOLE COLLAPSE: dense sphere -> hollow ring (core 30k) ====
       if (mode === "blackholeCollapse") {
         collapseClock += dt;
 
@@ -721,7 +702,6 @@ export default function CheforaParticleHero() {
         );
         const coreRadius = 0.6;
 
-        // only FIRST 30k collapse to black hole core
         for (let i = 0; i < BASE_PARTICLE_COUNT; i++) {
           const i3 = i * 3;
           let x = pos[i3];
@@ -730,7 +710,6 @@ export default function CheforaParticleHero() {
 
           const r3d = Math.sqrt(x * x + y * y + z * z) + 0.0001;
 
-          // strong radial pull to center
           const pullStrength = 12;
           const tCollapse = pullStrength * dt * (1 + 4 / (r3d + 0.5));
 
@@ -742,16 +721,13 @@ export default function CheforaParticleHero() {
           y += ry * tCollapse;
           z += rz * tCollapse;
 
-          // second half: carve the shadow + flatten into disk-ish ring
           if (collapsePhase > 0.5) {
-            const diskFactor = (collapsePhase - 0.5) * 2; // 0–1
+            const diskFactor = (collapsePhase - 0.5) * 2; 
 
-            // flatten depth
             z *= 1 - 0.9 * diskFactor;
 
             const r2d = Math.sqrt(x * x + y * y) + 0.0001;
 
-            // carve central shadow without a razor-sharp ring
             if (r2d < coreRadius * (0.4 + diskFactor * 0.8)) {
               const bandNoise = ringBand[i] || 0;
               const baseR = coreRadius * (0.9 + diskFactor * 0.5);
@@ -764,7 +740,6 @@ export default function CheforaParticleHero() {
               y *= scale;
             }
 
-            // swirl around event horizon
             const swirl =
               12 * dt * diskFactor * (1 + 1.5 / (r2d + 0.4));
             const tx = -y / r2d;
@@ -784,7 +759,6 @@ export default function CheforaParticleHero() {
         const shrink = 1 - Math.min(collapseClock / 2.0, 0.3);
         points.scale.set(shrink, shrink, shrink);
 
-        // after ring is stable, start accretion (outer 40k)
         if (collapseClock > CORE_COLLAPSE_DURATION + 0.4) {
           mode = "blackholeSpin";
           spinClock = 0;
@@ -792,7 +766,6 @@ export default function CheforaParticleHero() {
         }
       }
 
-      // === BLACK HOLE SPIN / ACCRETION: outer 40k spiral in =================
       if (mode === "blackholeSpin") {
         spinClock += dt;
 
@@ -804,7 +777,6 @@ export default function CheforaParticleHero() {
         if (!spinInitialized) {
           spinInitialized = true;
 
-          // initialize ring parameters ONLY for outer 40k
           for (let i = BASE_PARTICLE_COUNT; i < PARTICLE_COUNT; i++) {
             const i3 = i * 3;
             const x = pos[i3];
@@ -817,7 +789,6 @@ export default function CheforaParticleHero() {
           }
         }
 
-        // core ring (first 30k) keeps spinning in place
         for (let i = 0; i < BASE_PARTICLE_COUNT; i++) {
           const i3 = i * 3;
           let x = pos[i3];
@@ -839,7 +810,6 @@ export default function CheforaParticleHero() {
           pos[i3 + 2] = z;
         }
 
-        // infalling outer 40k – form accretion disk
         for (let i = BASE_PARTICLE_COUNT; i < PARTICLE_COUNT; i++) {
           const i3 = i * 3;
           let radius = ringRadius[i];
@@ -847,7 +817,6 @@ export default function CheforaParticleHero() {
 
           const targetRadius = 3.0;
 
-          // strong radial fall until they reach the disk radius
           if (radius > targetRadius) {
             const fallSpeed =
               22 *
@@ -870,10 +839,8 @@ export default function CheforaParticleHero() {
           let y = noisyRadius * Math.sin(angle);
           let z = 0;
 
-          // flatten disk
           y *= 0.35;
 
-          // tiny thickness / photon-ring wobble
           z += Math.sin(angle * 2.7) * 0.12;
 
           pos[i3] = x;
@@ -886,7 +853,6 @@ export default function CheforaParticleHero() {
         const ringPulse = 1 + Math.sin(spinClock * 5) * 0.05;
         points.scale.set(ringPulse, ringPulse, ringPulse);
 
-        // when infall finished + 2s cinematic pause → big bang
         if (spinClock > INFALL_DURATION + EXTRA_WAIT_BEFORE_EXPLOSION) {
           prepareExplosionFromCenter();
           mode = "explode";
@@ -900,7 +866,6 @@ export default function CheforaParticleHero() {
         }
       }
 
-      // === EXPLOSION =======================================================
       if (mode === "explode") {
         explosionClock += dt;
         const pos = geometry.attributes.position.array as Float32Array;

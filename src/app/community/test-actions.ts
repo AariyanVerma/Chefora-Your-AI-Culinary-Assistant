@@ -1,12 +1,10 @@
 'use server';
 
-// Minimal test server action to verify server actions work
 export async function testSimple() {
   console.log('[testSimple] Called');
   return { success: true, message: 'Server action works!' };
 }
 
-// Test with database connection
 export async function testWithDb() {
   try {
     console.log('[testWithDb] Starting...');
@@ -21,7 +19,6 @@ export async function testWithDb() {
   }
 }
 
-// Test with auth
 export async function testWithAuth() {
   try {
     console.log('[testWithAuth] Starting...');

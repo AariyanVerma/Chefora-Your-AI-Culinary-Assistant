@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, User } from 'lucide-react';
 import Image from 'next/image';
-// sharePost is a server action, we'll call it via API
 
 interface Friend {
   id: string;
@@ -115,7 +114,7 @@ export default function ShareModal({ postId, isOpen, onClose, onShareSuccess }: 
         backdropFilter: 'blur(20px) saturate(150%)',
         WebkitBackdropFilter: 'blur(20px) saturate(150%)'
       }}>
-            {/* Header */}
+            {}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2 className="cardTitle" style={{ fontSize: 'var(--fs-lg)' }}>Share Post</h2>
               <button
@@ -128,7 +127,7 @@ export default function ShareModal({ postId, isOpen, onClose, onShareSuccess }: 
               </button>
             </div>
 
-            {/* Search */}
+            {}
             <div style={{ marginBottom: '20px', position: 'relative' }}>
               <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
               <input
@@ -141,7 +140,7 @@ export default function ShareModal({ postId, isOpen, onClose, onShareSuccess }: 
               />
             </div>
 
-            {/* Friends List */}
+            {}
             <div style={{ maxHeight: '400px', overflowY: 'auto', marginBottom: '20px' }}>
               {loading ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>
@@ -200,7 +199,7 @@ export default function ShareModal({ postId, isOpen, onClose, onShareSuccess }: 
               )}
             </div>
 
-            {/* Actions */}
+            {}
             <div className="toolbar">
               <button
                 onClick={handleShare}

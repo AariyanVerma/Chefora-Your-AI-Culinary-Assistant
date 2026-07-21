@@ -49,7 +49,6 @@ export default function CreatePostClient() {
   const [newTagInput, setNewTagInput] = useState('#');
   const [tagError, setTagError] = useState('');
   
-  // Categories (separate from tags)
   const [categories, setCategories] = useState<string[]>([]);
   const [availableCategoryOptions, setAvailableCategoryOptions] = useState<string[]>([
     'Main Course', 'Appetizer', 'Dessert', 'Breakfast', 'Lunch', 'Dinner',
@@ -60,7 +59,6 @@ export default function CreatePostClient() {
   const [newCategoryInput, setNewCategoryInput] = useState('');
   const [categoryError, setCategoryError] = useState('');
 
-  // Pebbles wall layout effect for dietary restrictions
   useEffect(() => {
     const container = dietaryChipsRef.current;
     if (!container) return;
@@ -69,24 +67,20 @@ export default function CreatePostClient() {
       const chips = Array.from(container.children) as HTMLElement[];
       if (chips.length === 0) return;
 
-      // Reset all chips to natural width first (measure natural size)
       chips.forEach(chip => {
         chip.style.flex = '0 0 auto';
         chip.style.width = 'auto';
         chip.style.minWidth = 'auto';
       });
 
-      // Force a reflow to get accurate measurements
       void container.offsetHeight;
 
-      // Get container width and gap
       const containerWidth = container.offsetWidth;
       const gap = 8;
       const rows: HTMLElement[][] = [];
       let currentRow: HTMLElement[] = [];
       let currentRowWidth = 0;
 
-      // Group chips into rows based on natural width
       chips.forEach(chip => {
         const chipWidth = chip.offsetWidth;
         const neededWidth = currentRowWidth + chipWidth + (currentRow.length > 0 ? currentRow.length * gap : 0);
@@ -104,7 +98,6 @@ export default function CreatePostClient() {
         rows.push(currentRow);
       }
 
-      // Distribute remaining space in each row
       rows.forEach(row => {
         const naturalWidths = row.map(chip => chip.offsetWidth);
         const totalNaturalWidth = naturalWidths.reduce((sum, w) => sum + w, 0);
@@ -120,7 +113,7 @@ export default function CreatePostClient() {
             chip.style.minWidth = `${naturalWidth}px`;
           });
         } else {
-          // No extra space, keep natural widths
+          
           row.forEach(chip => {
             chip.style.flex = '0 0 auto';
             chip.style.width = 'auto';
@@ -129,10 +122,8 @@ export default function CreatePostClient() {
       });
     };
 
-    // Delay to ensure DOM is ready
     const timeoutId = setTimeout(layoutPebbles, 0);
 
-    // Recalculate on resize
     const resizeObserver = new ResizeObserver(() => {
       setTimeout(layoutPebbles, 0);
     });
@@ -144,7 +135,6 @@ export default function CreatePostClient() {
     };
   }, [dietTags, availableDietOptions]);
 
-  // Pebbles wall layout effect for tags
   useEffect(() => {
     const container = tagsChipsRef.current;
     if (!container) return;
@@ -153,24 +143,20 @@ export default function CreatePostClient() {
       const chips = Array.from(container.children) as HTMLElement[];
       if (chips.length === 0) return;
 
-      // Reset all chips to natural width first (measure natural size)
       chips.forEach(chip => {
         chip.style.flex = '0 0 auto';
         chip.style.width = 'auto';
         chip.style.minWidth = 'auto';
       });
 
-      // Force a reflow to get accurate measurements
       void container.offsetHeight;
 
-      // Get container width and gap
       const containerWidth = container.offsetWidth;
       const gap = 8;
       const rows: HTMLElement[][] = [];
       let currentRow: HTMLElement[] = [];
       let currentRowWidth = 0;
 
-      // Group chips into rows based on natural width
       chips.forEach(chip => {
         const chipWidth = chip.offsetWidth;
         const neededWidth = currentRowWidth + chipWidth + (currentRow.length > 0 ? currentRow.length * gap : 0);
@@ -188,7 +174,6 @@ export default function CreatePostClient() {
         rows.push(currentRow);
       }
 
-      // Distribute remaining space in each row
       rows.forEach(row => {
         const naturalWidths = row.map(chip => chip.offsetWidth);
         const totalNaturalWidth = naturalWidths.reduce((sum, w) => sum + w, 0);
@@ -204,7 +189,7 @@ export default function CreatePostClient() {
             chip.style.minWidth = `${naturalWidth}px`;
           });
         } else {
-          // No extra space, keep natural widths
+          
           row.forEach(chip => {
             chip.style.flex = '0 0 auto';
             chip.style.width = 'auto';
@@ -213,10 +198,8 @@ export default function CreatePostClient() {
       });
     };
 
-    // Delay to ensure DOM is ready
     const timeoutId = setTimeout(layoutPebbles, 0);
 
-    // Recalculate on resize
     const resizeObserver = new ResizeObserver(() => {
       setTimeout(layoutPebbles, 0);
     });
@@ -235,7 +218,6 @@ export default function CreatePostClient() {
       return;
     }
 
-    // Check if already exists (case-insensitive)
     const exists = availableDietOptions.some(
       diet => diet.toLowerCase() === trimmedInput.toLowerCase()
     );
@@ -245,11 +227,10 @@ export default function CreatePostClient() {
       return;
     }
 
-    // Add to available options
     setAvailableDietOptions([...availableDietOptions, trimmedInput]);
-    // Also add it to selected tags
+    
     setDietTags([...dietTags, trimmedInput]);
-    // Clear input and error
+    
     setNewDietInput('');
     setDietError('');
   };
@@ -262,7 +243,7 @@ export default function CreatePostClient() {
   };
 
   const handleAddTag = () => {
-    // Get value without leading # for validation
+    
     let tagValue = newTagInput.replace(/^#+/, '').trim();
     
     if (!tagValue) {
@@ -270,17 +251,14 @@ export default function CreatePostClient() {
       return;
     }
 
-    // Remove all spaces - tags cannot have spaces
     const normalizedTag = tagValue.replace(/\s+/g, '');
     if (normalizedTag !== tagValue) {
       setTagError('Tags cannot contain spaces');
       return;
     }
 
-    // Ensure tag starts with # (no space after #)
     const tagWithHash = `#${normalizedTag}`;
 
-    // Check if already exists (case-insensitive, compare without #)
     const exists = availableTagOptions.some(
       tag => tag.replace(/^#+/, '').toLowerCase() === normalizedTag.toLowerCase()
     );
@@ -290,11 +268,10 @@ export default function CreatePostClient() {
       return;
     }
 
-    // Add to available options
     setAvailableTagOptions([...availableTagOptions, tagWithHash]);
-    // Also add it to selected tags
+    
     setTags([...tags, tagWithHash]);
-    // Clear input and error, reset to #
+    
     setNewTagInput('#');
     setTagError('');
   };
@@ -302,12 +279,10 @@ export default function CreatePostClient() {
   const handleTagInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value;
     
-    // Ensure # is always at the start (no space after #)
     if (!value.startsWith('#')) {
       value = '#' + value.replace(/^#+/g, '').trim();
     }
     
-    // Remove all spaces (including after #)
     value = value.replace(/\s+/g, '');
     
     setNewTagInput(value);
@@ -319,13 +294,12 @@ export default function CreatePostClient() {
       e.preventDefault();
       handleAddTag();
     }
-    // Prevent space key
+    
     if (e.key === ' ') {
       e.preventDefault();
     }
   };
 
-  // Pebbles wall layout effect for categories
   useEffect(() => {
     const container = categoryChipsRef.current;
     if (!container) return;
@@ -334,24 +308,20 @@ export default function CreatePostClient() {
       const chips = Array.from(container.children) as HTMLElement[];
       if (chips.length === 0) return;
 
-      // Reset all chips to natural width first (measure natural size)
       chips.forEach(chip => {
         chip.style.flex = '0 0 auto';
         chip.style.width = 'auto';
         chip.style.minWidth = 'auto';
       });
 
-      // Force a reflow to get accurate measurements
       void container.offsetHeight;
 
-      // Get container width and gap
       const containerWidth = container.offsetWidth;
       const gap = 8;
       const rows: HTMLElement[][] = [];
       let currentRow: HTMLElement[] = [];
       let currentRowWidth = 0;
 
-      // Group chips into rows based on natural width
       chips.forEach(chip => {
         const chipWidth = chip.offsetWidth;
         const neededWidth = currentRowWidth + chipWidth + (currentRow.length > 0 ? currentRow.length * gap : 0);
@@ -369,7 +339,6 @@ export default function CreatePostClient() {
         rows.push(currentRow);
       }
 
-      // Distribute remaining space in each row
       rows.forEach(row => {
         const naturalWidths = row.map(chip => chip.offsetWidth);
         const totalNaturalWidth = naturalWidths.reduce((sum, w) => sum + w, 0);
@@ -385,7 +354,7 @@ export default function CreatePostClient() {
             chip.style.minWidth = `${naturalWidth}px`;
           });
         } else {
-          // No extra space, keep natural widths
+          
           row.forEach(chip => {
             chip.style.flex = '0 0 auto';
             chip.style.width = 'auto';
@@ -394,10 +363,8 @@ export default function CreatePostClient() {
       });
     };
 
-    // Delay to ensure DOM is ready
     const timeoutId = setTimeout(layoutPebbles, 0);
 
-    // Recalculate on resize
     const resizeObserver = new ResizeObserver(() => {
       setTimeout(layoutPebbles, 0);
     });
@@ -416,7 +383,6 @@ export default function CreatePostClient() {
       return;
     }
 
-    // Check if already exists (case-insensitive)
     const exists = availableCategoryOptions.some(
       cat => cat.toLowerCase() === trimmedInput.toLowerCase()
     );
@@ -426,11 +392,10 @@ export default function CreatePostClient() {
       return;
     }
 
-    // Add to available options
     setAvailableCategoryOptions([...availableCategoryOptions, trimmedInput]);
-    // Also add it to selected categories
+    
     setCategories([...categories, trimmedInput]);
-    // Clear input and error
+    
     setNewCategoryInput('');
     setCategoryError('');
   };
@@ -548,7 +513,7 @@ export default function CreatePostClient() {
       });
 
       if (result.success && result.post_id) {
-        // Navigate to the post detail page
+        
         router.replace(`/community/p/${result.post_id}`);
       } else {
         throw new Error('Failed to create post');
@@ -575,7 +540,7 @@ export default function CreatePostClient() {
           alignItems: 'center',
           textAlign: 'center',
         }}>
-                {/* Title */}
+                {}
                 <div className="community-form-section" style={{ width: '100%', maxWidth: '600px' }}>
                   <label className="community-form-label">Title *</label>
                   <input
@@ -588,7 +553,7 @@ export default function CreatePostClient() {
                   />
                 </div>
 
-                {/* Caption */}
+                {}
                 <div className="community-form-section" style={{ width: '100%', maxWidth: '600px' }}>
                   <label className="community-form-label">Caption</label>
                   <textarea
@@ -601,7 +566,7 @@ export default function CreatePostClient() {
                   />
                 </div>
 
-                {/* Images */}
+                {}
                 <div className="community-form-section" style={{ width: '100%', maxWidth: '600px' }}>
                   <label className="community-form-label">Images *</label>
                   <div className="community-image-upload" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '12px' }}>
@@ -640,7 +605,7 @@ export default function CreatePostClient() {
                   </div>
                 </div>
 
-                {/* Visibility */}
+                {}
                 <div className="community-form-section" style={{ width: '100%', maxWidth: '600px' }}>
                   <label className="community-form-label">Visibility</label>
                   <div className="chip-row" style={{ gap: '8px', justifyContent: 'center' }}>
@@ -668,13 +633,13 @@ export default function CreatePostClient() {
                   </div>
                 </div>
 
-                {/* Recipe Details */}
+                {}
                 <div className="community-form-section" style={{ width: '100%', maxWidth: '600px' }}>
                   <h3 className="cardTitle" style={{ fontSize: 'var(--fs-md)', marginBottom: '12px' }}>
                     Recipe Details (Optional)
                   </h3>
 
-                  {/* Basic Info */}
+                  {}
                   <div className="community-form-row">
                     <div className="community-form-field">
                       <label className="community-form-label">Servings</label>
@@ -734,7 +699,7 @@ export default function CreatePostClient() {
                     </div>
                   </div>
 
-                  {/* Dietary Restrictions */}
+                  {}
                   <div className="community-form-section" style={{ marginTop: '16px' }}>
                     <label className="community-form-label">Dietary Restrictions</label>
                     <div ref={dietaryChipsRef} className="chip-row dietary-restrictions-chips">
@@ -756,7 +721,7 @@ export default function CreatePostClient() {
                       ))}
                     </div>
                     
-                    {/* Add New Dietary Preference */}
+                    {}
                     <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                         <input
@@ -796,7 +761,7 @@ export default function CreatePostClient() {
                     </div>
                   </div>
 
-                  {/* Categories */}
+                  {}
                   <div className="community-form-section" style={{ marginTop: '16px' }}>
                     <label className="community-form-label">Categories</label>
                     <div ref={categoryChipsRef} className="chip-row dietary-restrictions-chips">
@@ -818,7 +783,7 @@ export default function CreatePostClient() {
                       ))}
                     </div>
                     
-                    {/* Add New Category */}
+                    {}
                     <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                         <input
@@ -858,7 +823,7 @@ export default function CreatePostClient() {
                     </div>
                   </div>
 
-                  {/* Tags */}
+                  {}
                   <div className="community-form-section" style={{ marginTop: '16px' }}>
                     <label className="community-form-label">Tags</label>
                     <div ref={tagsChipsRef} className="chip-row dietary-restrictions-chips">
@@ -880,7 +845,7 @@ export default function CreatePostClient() {
                       ))}
                     </div>
                     
-                    {/* Add New Tag */}
+                    {}
                     <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                         <input
@@ -917,7 +882,7 @@ export default function CreatePostClient() {
                     </div>
                   </div>
 
-                  {/* Ingredients */}
+                  {}
                   <div className="community-form-section" style={{ marginTop: '16px' }}>
                     <label className="community-form-label">Ingredients</label>
                     {ingredients.map((ingredient, index) => (
@@ -952,7 +917,7 @@ export default function CreatePostClient() {
                     </button>
                   </div>
 
-                  {/* Instructions */}
+                  {}
                   <div className="community-form-section" style={{ marginTop: '16px' }}>
                     <label className="community-form-label">Instructions</label>
                     {instructions.map((instruction, index) => (
@@ -988,7 +953,7 @@ export default function CreatePostClient() {
                   </div>
                 </div>
 
-                {/* Submit */}
+                {}
                 <div className="toolbar" style={{ marginTop: '24px', justifyContent: 'center', width: '100%' }}>
                   <button
                     type="submit"
@@ -1011,4 +976,3 @@ export default function CreatePostClient() {
     </div>
   );
 }
-

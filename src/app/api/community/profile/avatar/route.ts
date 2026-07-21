@@ -16,18 +16,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Avatar image is required' }, { status: 400 });
     }
 
-    // Validate that it's a data URL
     if (!avatarDataUrl.startsWith('data:image/')) {
       return NextResponse.json({ error: 'Invalid image format' }, { status: 400 });
     }
 
-    // Check if profile exists, create if not
     const profileCheck = await sql<{ user_id: string }>`
       SELECT user_id FROM community_profiles WHERE user_id = ${user.id}
     `;
 
     if (profileCheck.rows.length === 0) {
-      // Create profile with default values
+      
       const { rows: userRows } = await sql<{ name: string; email: string }>`
         SELECT name, email FROM users WHERE id = ${user.id}
       `;
@@ -43,7 +41,7 @@ export async function POST(req: Request) {
         )
       `;
     } else {
-      // Update existing profile
+      
       await sql`
         UPDATE community_profiles
         SET avatar_url = ${avatarDataUrl}, updated_at = NOW()
@@ -57,14 +55,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-
-
-
-
-
-
-
-
-
-
-

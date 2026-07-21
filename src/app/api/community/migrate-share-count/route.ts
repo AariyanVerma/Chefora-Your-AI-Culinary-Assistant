@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 
-// Allow both GET and POST for easy browser access
 export async function GET() {
   return await runMigration();
 }
@@ -12,13 +11,12 @@ export async function POST() {
 
 async function runMigration() {
   try {
-    // Add share_count column to community_posts table
+    
     await sql`
       ALTER TABLE community_posts 
       ADD COLUMN IF NOT EXISTS share_count INTEGER DEFAULT 0;
     `;
 
-    // Create community_shares table (or alter if exists)
     await sql`
       CREATE TABLE IF NOT EXISTS community_shares (
         id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -30,7 +28,6 @@ async function runMigration() {
       );
     `;
 
-    // Add shared_to_user_id column if table exists without it
     await sql`
       DO $$ 
       BEGIN
@@ -46,7 +43,6 @@ async function runMigration() {
       END $$;
     `;
 
-    // Create indexes
     await sql`
       CREATE INDEX IF NOT EXISTS idx_community_shares_user_id ON community_shares(user_id);
     `;
@@ -60,7 +56,6 @@ async function runMigration() {
       CREATE INDEX IF NOT EXISTS idx_community_shares_user_created ON community_shares(user_id, created_at DESC);
     `;
 
-    // Update the trigger function to handle shares
     await sql`
       CREATE OR REPLACE FUNCTION update_post_counters()
       RETURNS TRIGGER AS $$
@@ -95,7 +90,6 @@ async function runMigration() {
       $$ LANGUAGE plpgsql;
     `;
 
-    // Create trigger for shares
     await sql`
       DROP TRIGGER IF EXISTS trigger_update_post_shares ON community_shares;
     `;

@@ -6,10 +6,6 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
-// ============================================
-// VALIDATION SCHEMAS
-// ============================================
-
 const createPostSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),
   caption: z.string().max(2000).optional(),
@@ -46,10 +42,6 @@ const updateProfileSchema = z.object({
   website: z.string().url().max(200).optional().or(z.literal('')),
 });
 
-// ============================================
-// TYPES
-// ============================================
-
 export type CommunityPost = {
   id: string;
   author_id: string;
@@ -78,6 +70,7 @@ export type CommunityPost = {
     cuisine: string | null;
     diet_tags: string[];
     tags: string[];
+    categories?: string[];
   } | null;
   is_liked: boolean;
   is_saved: boolean;
@@ -122,10 +115,6 @@ export type CommunityProfile = {
   is_blocked: boolean;
 };
 
-// ============================================
-// PROFILE HELPERS
-// ============================================
-
 async function getOrCreateProfile(userId: string) {
   const existing = await sql<{ id: string }>`
     SELECT id FROM community_profiles WHERE user_id = ${userId}
@@ -135,7 +124,6 @@ async function getOrCreateProfile(userId: string) {
     return existing.rows[0].id;
   }
 
-  // Get user info to create profile
   const user = await sql<{ name: string; email: string }>`
     SELECT name, email FROM users WHERE id = ${userId}
   `;
@@ -147,7 +135,6 @@ async function getOrCreateProfile(userId: string) {
   const username = user.rows[0].email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
   const displayName = user.rows[0].name;
 
-  // Ensure username is unique
   let finalUsername = username;
   let counter = 1;
   while (true) {
@@ -168,11 +155,6 @@ async function getOrCreateProfile(userId: string) {
   return newProfile.rows[0].id;
 }
 
-// ============================================
-// POST ACTIONS
-// ============================================
-
-// Simple test function to verify server actions work
 export async function testServerAction() {
   try {
     console.log('[testServerAction] Called successfully');
@@ -184,14 +166,11 @@ export async function testServerAction() {
 }
 
 export async function createPost(data: any) {
-  // CRITICAL: This function MUST always return a response, never throw unhandled errors
-  // Wrap everything to prevent "Failed to fetch" errors
   
-  // Log immediately to verify function is called
   console.log('[createPost] ===== FUNCTION CALLED =====');
   
   try {
-    // Validate data exists
+    
     if (!data) {
       console.error('[createPost] No data provided');
       throw new Error('No data provided');
@@ -200,19 +179,17 @@ export async function createPost(data: any) {
     console.log('[createPost] Data received - title:', data?.title);
     console.log('[createPost] Data received - media_urls length:', data?.media_urls?.length);
     
-    // Check if data is too large (base64 images can be huge)
     try {
       const dataSize = JSON.stringify(data).length;
       console.log('[createPost] Data size:', dataSize, 'bytes');
-      if (dataSize > 10 * 1024 * 1024) { // 10MB limit
+      if (dataSize > 10 * 1024 * 1024) { 
         throw new Error('Data too large. Please reduce image size.');
       }
     } catch (sizeError: any) {
       console.error('[createPost] Error checking data size:', sizeError);
-      // Continue anyway - might be a serialization issue but not fatal
+      
     }
 
-    // Validate user first - wrap in try-catch to handle any errors
     let user: SessionUser | null = null;
     try {
       console.log('[createPost] Attempting to get current user...');
@@ -221,7 +198,7 @@ export async function createPost(data: any) {
     } catch (authError: unknown) {
       const errorMsg = authError instanceof Error ? authError.message : String(authError);
       console.error('[createPost] Auth error:', errorMsg);
-      // Don't throw here - check if user is null below
+      
     }
     
     if (!user) {
@@ -229,7 +206,6 @@ export async function createPost(data: any) {
       throw new Error('You must be logged in to create a post');
     }
 
-    // Validate input
     let validated;
     try {
       console.log('[createPost] Validating input data...');
@@ -238,7 +214,7 @@ export async function createPost(data: any) {
     } catch (validationError: any) {
       console.error('[createPost] Validation error:', validationError);
       if (validationError instanceof z.ZodError) {
-        const firstError = validationError.errors[0];
+        const firstError = validationError.issues[0];
         const errorMsg = firstError?.message || 'Validation failed';
         console.error('[createPost] Validation error message:', errorMsg);
         throw new Error(errorMsg);
@@ -246,7 +222,6 @@ export async function createPost(data: any) {
       throw new Error('Invalid input data');
     }
 
-    // Get or create profile
     let profileId;
     try {
       profileId = await getOrCreateProfile(user.id);
@@ -258,7 +233,6 @@ export async function createPost(data: any) {
       throw new Error('Failed to get user profile. Please try again.');
     }
 
-    // Create post
     let post;
     try {
       post = await sql<{ id: string }>`
@@ -283,7 +257,6 @@ export async function createPost(data: any) {
 
     const postId = post.rows[0].id;
 
-    // Add media
     try {
       for (let i = 0; i < validated.media_urls.length; i++) {
         await sql`
@@ -293,10 +266,9 @@ export async function createPost(data: any) {
       }
     } catch (mediaError: any) {
       console.error('Error adding media:', mediaError);
-      // Continue even if media fails - post is already created
+      
     }
 
-    // Add recipe if provided
     if (validated.ingredients || validated.instructions) {
       try {
         await sql`
@@ -321,18 +293,17 @@ export async function createPost(data: any) {
         `;
       } catch (recipeError: any) {
         console.error('Error adding recipe:', recipeError);
-        // Continue even if recipe fails - post is already created
+        
       }
     }
 
-    // Update post count
     try {
       await sql`
         UPDATE community_profiles SET post_count = post_count + 1 WHERE user_id = ${user.id}
       `;
     } catch (countError: any) {
       console.error('Error updating post count:', countError);
-      // Continue even if count update fails
+      
     }
 
     revalidatePath('/community');
@@ -341,15 +312,13 @@ export async function createPost(data: any) {
     
     return { success: true, post_id: postId };
   } catch (error: unknown) {
-    // CRITICAL: This catch block MUST handle all errors to prevent "Failed to fetch"
+    
     console.error('[createPost] ===== ERROR CAUGHT =====');
     console.error('[createPost] Error type:', typeof error);
     console.error('[createPost] Error:', error);
     
-    // Extract a safe, serializable error message
     let errorMessage = 'Failed to create post. Please try again.';
     
-    // Safely extract error message - be very defensive here
     try {
       if (error instanceof Error) {
         errorMessage = error.message || 'An error occurred';
@@ -363,25 +332,20 @@ export async function createPost(data: any) {
         errorMessage = error;
       }
     } catch (extractError) {
-      // If we can't extract the message, use default
+      
       console.error('[createPost] Could not extract error message:', extractError);
       errorMessage = 'An unexpected error occurred. Please try again.';
     }
     
-    // Ensure the error message is not too long
     if (errorMessage.length > 200) {
       errorMessage = errorMessage.substring(0, 200) + '...';
     }
     
-    // Log the final error message
     console.error('[createPost] Final error message:', errorMessage);
     console.error('[createPost] ===== END ERROR =====');
     
-    // IMPORTANT: In Next.js Server Actions, we MUST throw an Error object
-    // But we need to ensure it's serializable. Create a new plain Error.
     const serializableError = new Error(errorMessage);
     
-    // Set the stack to undefined to avoid serialization issues
     if (serializableError.stack) {
       serializableError.stack = undefined;
     }
@@ -420,15 +384,8 @@ export async function getPosts(params: {
 
   const offset = (page - 1) * limit;
 
-  // Build search pattern if needed  
   const searchPattern = search ? `%${search}%` : null;
 
-  // @vercel/postgres has issues with nested SQL fragments
-  // Solution: Fetch posts with basic filters, then apply complex filters in memory if needed
-  // Or build completely separate queries - but that's verbose
-  // For MVP, let's use a simpler approach: fetch all visible posts, filter in memory for complex cases
-  
-  // Get user's friends for privacy filtering
   const userFriends = await sql<{ user_id: string }>`
     SELECT 
       CASE 
@@ -439,10 +396,8 @@ export async function getPosts(params: {
     WHERE user1_id = ${user.id} OR user2_id = ${user.id}
   `;
   const friendIds = userFriends.rows.map(r => r.user_id);
-  friendIds.push(user.id); // Include self
+  friendIds.push(user.id); 
 
-  // First, get all posts that pass basic visibility checks
-  // Calculate actual counts from tables to ensure accuracy
   const allPosts = await sql`
     SELECT 
       p.*,
@@ -479,10 +434,8 @@ export async function getPosts(params: {
     LIMIT ${limit * 3} OFFSET 0
   `;
 
-  // Filter in memory for complex filters
   let filtered = allPosts.rows;
 
-  // Apply following filter
   if (sort === 'following') {
     const followingIds = await sql<{ following_id: string }>`
       SELECT following_id FROM community_follows WHERE follower_id = ${user.id}
@@ -491,17 +444,14 @@ export async function getPosts(params: {
     filtered = filtered.filter(p => followingSet.has(p.author_id));
   }
 
-  // Apply cuisine filter
   if (filter_cuisine) {
     filtered = filtered.filter(p => p.cuisine === filter_cuisine);
   }
 
-  // Apply difficulty filter
   if (filter_difficulty) {
     filtered = filtered.filter(p => p.difficulty === filter_difficulty);
   }
 
-  // Apply time filter
   if (filter_time) {
     filtered = filtered.filter(p => {
       const totalTime = p.total_time_minutes;
@@ -522,7 +472,6 @@ export async function getPosts(params: {
     });
   }
 
-  // Apply servings filter
   if (filter_servings) {
     filtered = filtered.filter(p => {
       const servings = p.servings;
@@ -543,7 +492,6 @@ export async function getPosts(params: {
     });
   }
 
-  // Apply diet filter
   if (filter_diet && filter_diet.length > 0) {
     filtered = filtered.filter(p => {
       const dietTags = p.diet_tags || [];
@@ -551,7 +499,6 @@ export async function getPosts(params: {
     });
   }
 
-  // Apply tags filter
   if (filter_tags && filter_tags.length > 0) {
     filtered = filtered.filter(p => {
       const tags = p.tags || [];
@@ -559,7 +506,6 @@ export async function getPosts(params: {
     });
   }
 
-  // Apply search filter
   if (searchPattern) {
     const searchLower = searchPattern.replace(/%/g, '').toLowerCase();
     filtered = filtered.filter(p => 
@@ -568,7 +514,6 @@ export async function getPosts(params: {
     );
   }
 
-  // Apply sorting - use actual counts for trending
   if (sort === 'trending') {
     filtered.sort((a, b) => {
       const likeA = a.actual_like_count ?? a.like_count ?? 0;
@@ -585,10 +530,8 @@ export async function getPosts(params: {
     filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }
 
-  // Apply pagination
   const paginated = filtered.slice(offset, offset + limit);
 
-  // Return in the same format as before, using actual counts
   const result = { rows: paginated };
   
   return result.rows.map((row: any) => ({
@@ -687,14 +630,12 @@ export async function getPost(postId: string): Promise<CommunityPost | null> {
 
   const row = result.rows[0];
   
-  // Use actual counts from tables, fallback to cached counts if actual counts are null
   const likeCount = row.actual_like_count ?? row.like_count ?? 0;
   const repostCount = row.actual_repost_count ?? row.repost_count ?? 0;
   const commentCount = row.actual_comment_count ?? row.comment_count ?? 0;
   const saveCount = row.actual_save_count ?? row.save_count ?? 0;
   const shareCount = row.actual_share_count ?? row.share_count ?? 0;
   
-  // Update cached counts if they're out of sync (async, don't wait)
   if (row.actual_like_count !== row.like_count || row.actual_repost_count !== row.repost_count || row.actual_share_count !== row.share_count) {
     sql`
       UPDATE community_posts 
@@ -761,12 +702,12 @@ export async function updatePost(
     cuisine?: string;
     diet_tags?: string[];
     tags?: string[];
+    categories?: string[];
   }
 ) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  // Verify ownership
   const post = await sql<{ author_id: string }>`
     SELECT author_id FROM community_posts WHERE id = ${postId}
   `;
@@ -779,7 +720,6 @@ export async function updatePost(
     throw new Error('Unauthorized');
   }
 
-  // Update post
   if (data.title || data.caption !== undefined || data.visibility) {
     await sql`
       UPDATE community_posts
@@ -792,12 +732,10 @@ export async function updatePost(
     `;
   }
 
-  // Update media if provided
   if (data.media_urls && data.media_urls.length > 0) {
-    // Delete old media
+    
     await sql`DELETE FROM community_post_media WHERE post_id = ${postId}`;
     
-    // Add new media
     for (let i = 0; i < data.media_urls.length; i++) {
       await sql`
         INSERT INTO community_post_media (post_id, media_url, order_index)
@@ -806,14 +744,13 @@ export async function updatePost(
     }
   }
 
-  // Update recipe if provided
   if (data.ingredients || data.instructions) {
     const existing = await sql<{ id: string }>`
       SELECT id FROM community_recipes WHERE post_id = ${postId}
     `;
 
     if (existing.rows.length > 0) {
-      // Update existing recipe
+      
       await sql`
         UPDATE community_recipes
         SET 
@@ -831,7 +768,7 @@ export async function updatePost(
         WHERE post_id = ${postId}
       `;
     } else {
-      // Create new recipe
+      
       await sql`
         INSERT INTO community_recipes (
           post_id, ingredients, instructions, servings,
@@ -864,7 +801,6 @@ export async function deletePost(postId: string) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  // Verify ownership
   const post = await sql<{ author_id: string }>`
     SELECT author_id FROM community_posts WHERE id = ${postId}
   `;
@@ -877,12 +813,8 @@ export async function deletePost(postId: string) {
     throw new Error('Unauthorized');
   }
 
-  // Hard delete - delete all related records explicitly
-  // Note: Most have CASCADE, but we delete explicitly to ensure cleanup
-  // Delete in order to avoid foreign key issues: notifications first (references post), then others
   await sql`DELETE FROM community_notifications WHERE post_id = ${postId}`;
-  // Comments, likes, bookmarks, reposts, media, and recipes will cascade when post is deleted
-  // But we delete them explicitly to be safe
+  
   await sql`DELETE FROM community_likes WHERE post_id = ${postId}`;
   await sql`DELETE FROM community_likes WHERE comment_id IN (SELECT id FROM community_comments WHERE post_id = ${postId})`;
   await sql`DELETE FROM community_comments WHERE post_id = ${postId}`;
@@ -891,17 +823,13 @@ export async function deletePost(postId: string) {
   await sql`DELETE FROM community_shares WHERE post_id = ${postId}`;
   await sql`DELETE FROM community_post_media WHERE post_id = ${postId}`;
   await sql`DELETE FROM community_recipes WHERE post_id = ${postId}`;
-  // Finally delete the post (this will cascade any remaining references)
+  
   await sql`DELETE FROM community_posts WHERE id = ${postId}`;
 
   revalidatePath('/community');
   revalidatePath(`/community/p/${postId}`);
   return { success: true };
 }
-
-// ============================================
-// LIKE ACTIONS
-// ============================================
 
 export async function toggleLikePost(postId: string) {
   const user = await getCurrentUser();
@@ -912,18 +840,17 @@ export async function toggleLikePost(postId: string) {
   `;
 
   if (existing.rows.length > 0) {
-    // Unlike
+    
     await sql`
       DELETE FROM community_likes WHERE user_id = ${user.id} AND post_id = ${postId}
     `;
   } else {
-    // Like
+    
     await sql`
       INSERT INTO community_likes (user_id, post_id)
       VALUES (${user.id}, ${postId})
     `;
 
-    // Create notification (if not own post)
     const post = await sql<{ author_id: string }>`
       SELECT author_id FROM community_posts WHERE id = ${postId}
     `;
@@ -936,7 +863,6 @@ export async function toggleLikePost(postId: string) {
     }
   }
 
-  // Get the updated like count from the database - calculate actual count from likes table
   const countResult = await sql<{ like_count: number; is_liked: boolean }>`
     SELECT 
       (SELECT COUNT(*)::integer FROM community_likes WHERE post_id = ${postId}) as like_count,
@@ -948,7 +874,6 @@ export async function toggleLikePost(postId: string) {
   const likeCount = countResult.rows[0]?.like_count ?? 0;
   const isLiked = countResult.rows[0]?.is_liked ?? false;
   
-  // Update cached count in posts table
   await sql`
     UPDATE community_posts 
     SET like_count = ${likeCount}
@@ -960,7 +885,7 @@ export async function toggleLikePost(postId: string) {
   
   return { 
     success: true,
-    like_count: Math.max(0, likeCount), // Ensure never negative
+    like_count: Math.max(0, likeCount), 
     is_liked: isLiked
   };
 }
@@ -969,7 +894,6 @@ export async function toggleLikeComment(commentId: string) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  // Get the post_id from the comment for revalidation
   const comment = await sql<{ post_id: string }>`
     SELECT post_id FROM community_comments WHERE id = ${commentId}
   `;
@@ -985,18 +909,17 @@ export async function toggleLikeComment(commentId: string) {
   `;
 
   if (existing.rows.length > 0) {
-    // Unlike
+    
     await sql`
       DELETE FROM community_likes WHERE user_id = ${user.id} AND comment_id = ${commentId}
     `;
   } else {
-    // Like
+    
     await sql`
       INSERT INTO community_likes (user_id, comment_id)
       VALUES (${user.id}, ${commentId})
     `;
 
-    // Create notification (if not own comment)
     const commentAuthor = await sql<{ author_id: string }>`
       SELECT author_id FROM community_comments WHERE id = ${commentId}
     `;
@@ -1009,7 +932,6 @@ export async function toggleLikeComment(commentId: string) {
     }
   }
 
-  // Get the updated like count from the database
   const countResult = await sql<{ like_count: number; is_liked: boolean }>`
     SELECT 
       (SELECT COUNT(*)::integer FROM community_likes WHERE comment_id = ${commentId}) as like_count,
@@ -1019,7 +941,6 @@ export async function toggleLikeComment(commentId: string) {
   const likeCount = countResult.rows[0]?.like_count ?? 0;
   const isLiked = countResult.rows[0]?.is_liked ?? false;
   
-  // Update cached count in comments table
   await sql`
     UPDATE community_comments 
     SET like_count = ${likeCount}
@@ -1030,7 +951,7 @@ export async function toggleLikeComment(commentId: string) {
   
   return { 
     success: true,
-    like_count: Math.max(0, likeCount), // Ensure never negative
+    like_count: Math.max(0, likeCount), 
     is_liked: isLiked
   };
 }
@@ -1059,10 +980,6 @@ export async function toggleSavePost(postId: string) {
   return { success: true };
 }
 
-// ============================================
-// COMMENT ACTIONS
-// ============================================
-
 export async function createComment(data: z.infer<typeof createCommentSchema>) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
@@ -1075,7 +992,6 @@ export async function createComment(data: z.infer<typeof createCommentSchema>) {
     RETURNING id
   `;
 
-  // Create notification (if not own post)
   const post = await sql<{ author_id: string }>`
     SELECT author_id FROM community_posts WHERE id = ${validated.post_id}
   `;
@@ -1087,7 +1003,6 @@ export async function createComment(data: z.infer<typeof createCommentSchema>) {
     `;
   }
 
-  // Get actual comment count after creation
   const countResult = await sql<{ comment_count: number }>`
     SELECT COUNT(*)::integer as comment_count
     FROM community_comments 
@@ -1096,7 +1011,6 @@ export async function createComment(data: z.infer<typeof createCommentSchema>) {
 
   const commentCount = countResult.rows[0]?.comment_count ?? 0;
 
-  // Update cached count
   await sql`
     UPDATE community_posts 
     SET comment_count = ${commentCount}
@@ -1145,7 +1059,6 @@ export async function getComments(postId: string): Promise<CommunityComment[]> {
     replies: [] as CommunityComment[],
   }));
 
-  // Build reply tree
   const commentMap = new Map<string, CommunityComment>();
   const rootComments: CommunityComment[] = [];
 
@@ -1185,15 +1098,13 @@ export async function deleteComment(commentId: string) {
 
   const postId = comment.rows[0].post_id;
 
-  // Hard delete - delete related records first
   await sql`DELETE FROM community_notifications WHERE comment_id = ${commentId}`;
   await sql`DELETE FROM community_likes WHERE comment_id = ${commentId}`;
-  // Delete child comments (replies) if any
+  
   await sql`DELETE FROM community_comments WHERE parent_comment_id = ${commentId}`;
-  // Delete the comment itself
+  
   await sql`DELETE FROM community_comments WHERE id = ${commentId}`;
 
-  // Get actual comment count after deletion
   const countResult = await sql<{ comment_count: number }>`
     SELECT COUNT(*)::integer as comment_count
     FROM community_comments 
@@ -1202,7 +1113,6 @@ export async function deleteComment(commentId: string) {
 
   const commentCount = countResult.rows[0]?.comment_count ?? 0;
 
-  // Update cached count
   await sql`
     UPDATE community_posts 
     SET comment_count = ${commentCount}
@@ -1215,10 +1125,6 @@ export async function deleteComment(commentId: string) {
     comment_count: commentCount
   };
 }
-
-// ============================================
-// FOLLOW ACTIONS
-// ============================================
 
 export async function toggleFollow(userId: string) {
   const currentUser = await getCurrentUser();
@@ -1242,7 +1148,6 @@ export async function toggleFollow(userId: string) {
       VALUES (${currentUser.id}, ${userId})
     `;
 
-    // Create notification
     await sql`
       INSERT INTO community_notifications (user_id, type, actor_id)
       VALUES (${userId}, 'follow', ${currentUser.id})
@@ -1252,10 +1157,6 @@ export async function toggleFollow(userId: string) {
   revalidatePath(`/u/${userId}`);
   return { success: true };
 }
-
-// ============================================
-// PROFILE ACTIONS
-// ============================================
 
 export async function getProfileByUsername(username: string, currentUserId: string): Promise<CommunityProfile | null> {
   const result = await sql`
@@ -1363,7 +1264,6 @@ export async function updateProfile(data: z.infer<typeof updateProfileSchema>) {
 
   const validated = updateProfileSchema.parse(data);
 
-  // Check username uniqueness (if changed)
   const existing = await sql<{ user_id: string }>`
     SELECT user_id FROM community_profiles WHERE username = ${validated.username} AND user_id != ${user.id}
   `;
@@ -1392,10 +1292,6 @@ export async function updateProfile(data: z.infer<typeof updateProfileSchema>) {
   return { success: true };
 }
 
-// ============================================
-// REPOST ACTIONS
-// ============================================
-
 export async function repostPost(postId: string, quoteText?: string) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
@@ -1405,19 +1301,18 @@ export async function repostPost(postId: string, quoteText?: string) {
   `;
 
   if (existing.rows.length > 0) {
-    // Unrepost - delete the repost record
+    
     await sql`
       DELETE FROM community_reposts WHERE user_id = ${user.id} AND original_post_id = ${postId}
     `;
-    // Note: Notification remains (user did repost at some point), but repost count decreases
+    
   } else {
-    // Repost - create new repost record
+    
     await sql`
       INSERT INTO community_reposts (user_id, original_post_id, quote_text)
       VALUES (${user.id}, ${postId}, ${quoteText || null})
     `;
 
-    // Create notification only if not reposting own post
     const post = await sql<{ author_id: string }>`
       SELECT author_id FROM community_posts WHERE id = ${postId}
     `;
@@ -1443,7 +1338,6 @@ export async function sharePost(postId: string, friendId: string) {
     throw new Error('Friend ID is required');
   }
 
-  // Verify friendship exists
   const friendship = await sql<{ id: string }>`
     SELECT id FROM community_friendships
     WHERE (user1_id = ${user.id} AND user2_id = ${friendId})
@@ -1454,7 +1348,6 @@ export async function sharePost(postId: string, friendId: string) {
     throw new Error('Friendship not found');
   }
 
-  // Check if already shared to this friend
   const existing = await sql<{ id: string }>`
     SELECT id FROM community_shares 
     WHERE user_id = ${user.id} AND post_id = ${postId} AND shared_to_user_id = ${friendId}
@@ -1464,20 +1357,17 @@ export async function sharePost(postId: string, friendId: string) {
     throw new Error('Post already shared to this friend');
   }
 
-  // Create share record
   await sql`
     INSERT INTO community_shares (user_id, post_id, shared_to_user_id)
     VALUES (${user.id}, ${postId}, ${friendId})
   `;
 
-  // Create notification for the friend
   await sql`
     INSERT INTO community_notifications (user_id, type, actor_id, post_id)
     VALUES (${friendId}, 'share', ${user.id}, ${postId})
     ON CONFLICT DO NOTHING
   `;
 
-  // Get actual share count from database
   const countResult = await sql<{ share_count: number }>`
     SELECT COUNT(*)::integer as share_count
     FROM community_shares 
@@ -1486,7 +1376,6 @@ export async function sharePost(postId: string, friendId: string) {
 
   const shareCount = countResult.rows[0]?.share_count ?? 0;
   
-  // Update cached count
   await sql`
     UPDATE community_posts 
     SET share_count = ${shareCount}
@@ -1502,10 +1391,6 @@ export async function sharePost(postId: string, friendId: string) {
   };
 }
 
-// ============================================
-// FRIEND MANAGEMENT ACTIONS
-// ============================================
-
 export async function sendFriendRequest(userId: string) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
@@ -1514,7 +1399,6 @@ export async function sendFriendRequest(userId: string) {
     throw new Error('Cannot send friend request to yourself');
   }
 
-  // Check if already friends
   const friendship = await sql<{ id: string }>`
     SELECT id FROM community_friendships
     WHERE (user1_id = ${user.id} AND user2_id = ${userId})
@@ -1525,7 +1409,6 @@ export async function sendFriendRequest(userId: string) {
     throw new Error('Already friends');
   }
 
-  // Check if request already exists
   const existing = await sql<{ id: string; status: string }>`
     SELECT id, status FROM community_friend_requests
     WHERE (requester_id = ${user.id} AND receiver_id = ${userId})
@@ -1542,7 +1425,6 @@ export async function sendFriendRequest(userId: string) {
     }
   }
 
-  // Create friend request
   await sql`
     INSERT INTO community_friend_requests (requester_id, receiver_id, status)
     VALUES (${user.id}, ${userId}, 'pending')
@@ -1550,7 +1432,6 @@ export async function sendFriendRequest(userId: string) {
     SET status = 'pending', updated_at = NOW()
   `;
 
-  // Create notification
   await sql`
     INSERT INTO community_notifications (user_id, type, actor_id)
     VALUES (${userId}, 'friend_request', ${user.id})
@@ -1566,7 +1447,6 @@ export async function acceptFriendRequest(requestId: string) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  // Get the request
   const request = await sql<{ requester_id: string; receiver_id: string }>`
     SELECT requester_id, receiver_id FROM community_friend_requests
     WHERE id = ${requestId} AND receiver_id = ${user.id} AND status = 'pending'
@@ -1579,14 +1459,12 @@ export async function acceptFriendRequest(requestId: string) {
   const requesterId = request.rows[0].requester_id;
   const receiverId = request.rows[0].receiver_id;
 
-  // Update request status
   await sql`
     UPDATE community_friend_requests
     SET status = 'accepted', updated_at = NOW()
     WHERE id = ${requestId}
   `;
 
-  // Create friendship (ensure user1_id < user2_id)
   const user1Id = requesterId < receiverId ? requesterId : receiverId;
   const user2Id = requesterId < receiverId ? receiverId : requesterId;
 
@@ -1596,7 +1474,6 @@ export async function acceptFriendRequest(requestId: string) {
     ON CONFLICT (user1_id, user2_id) DO NOTHING
   `;
 
-  // Create notification for requester
   await sql`
     INSERT INTO community_notifications (user_id, type, actor_id)
     VALUES (${requesterId}, 'friend_accepted', ${user.id})
@@ -1612,7 +1489,6 @@ export async function rejectFriendRequest(requestId: string) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  // Update request status
   await sql`
     UPDATE community_friend_requests
     SET status = 'rejected', updated_at = NOW()
@@ -1627,14 +1503,12 @@ export async function removeFriend(userId: string) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  // Delete friendship
   await sql`
     DELETE FROM community_friendships
     WHERE (user1_id = ${user.id} AND user2_id = ${userId})
        OR (user1_id = ${userId} AND user2_id = ${user.id})
   `;
 
-  // Delete any pending friend requests
   await sql`
     DELETE FROM community_friend_requests
     WHERE (requester_id = ${user.id} AND receiver_id = ${userId})
@@ -1650,7 +1524,6 @@ export async function cancelFriendRequest(userId: string) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  // Delete pending request
   await sql`
     DELETE FROM community_friend_requests
     WHERE requester_id = ${user.id} AND receiver_id = ${userId} AND status = 'pending'
@@ -1665,7 +1538,6 @@ export async function getFriendRequests() {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  // Get incoming requests
   const incoming = await sql<{
     id: string;
     requester_id: string;
@@ -1687,7 +1559,6 @@ export async function getFriendRequests() {
     ORDER BY fr.created_at DESC
   `;
 
-  // Get outgoing requests
   const outgoing = await sql<{
     id: string;
     receiver_id: string;
@@ -1721,7 +1592,6 @@ export async function getFriends(userId?: string) {
 
   const targetUserId = userId || user.id;
 
-  // Get all friends
   const friends = await sql<{
     user_id: string;
     username: string;
@@ -1751,7 +1621,7 @@ export async function getFriends(userId?: string) {
 }
 
 export async function getPostsByUser(userId: string, currentUserId: string): Promise<CommunityPost[]> {
-  // Get user's friends for privacy filtering
+  
   const userFriends = await sql<{ user_id: string }>`
     SELECT 
       CASE 
@@ -1762,7 +1632,7 @@ export async function getPostsByUser(userId: string, currentUserId: string): Pro
     WHERE user1_id = ${currentUserId} OR user2_id = ${currentUserId}
   `;
   const friendIds = userFriends.rows.map(r => r.user_id);
-  friendIds.push(currentUserId); // Include self
+  friendIds.push(currentUserId); 
 
   const result = await sql`
     SELECT 
@@ -1837,12 +1707,11 @@ export async function getPostsByUser(userId: string, currentUserId: string): Pro
 }
 
 export async function getSavedPosts(userId: string, currentUserId: string): Promise<CommunityPost[]> {
-  // Only allow users to see their own saved posts (saved posts are private)
+  
   if (userId !== currentUserId) {
     return [];
   }
 
-  // Get user's friends for privacy filtering
   const userFriends = await sql<{ user_id: string }>`
     SELECT 
       CASE 
@@ -1853,7 +1722,7 @@ export async function getSavedPosts(userId: string, currentUserId: string): Prom
     WHERE user1_id = ${currentUserId} OR user2_id = ${currentUserId}
   `;
   const friendIds = userFriends.rows.map(r => r.user_id);
-  friendIds.push(currentUserId); // Include self
+  friendIds.push(currentUserId); 
 
   const result = await sql`
     SELECT 
@@ -1932,8 +1801,6 @@ export async function getFriendSuggestions() {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  // Get users who are not already friends, not blocked, and not the current user
-  // Suggest users who have mutual friends or are followed by people you follow
   const suggestions = await sql<{
     user_id: string;
     username: string;
@@ -1990,10 +1857,6 @@ export async function getFriendSuggestions() {
   return suggestions.rows;
 }
 
-// ============================================
-// BLOCK/REPORT ACTIONS
-// ============================================
-
 export async function blockUser(userId: string) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
@@ -2008,7 +1871,6 @@ export async function blockUser(userId: string) {
     ON CONFLICT (blocker_id, blocked_id) DO NOTHING
   `;
 
-  // Remove any follows/friend requests
   await sql`
     DELETE FROM community_follows WHERE (follower_id = ${user.id} AND following_id = ${userId}) OR (follower_id = ${userId} AND following_id = ${user.id})
   `;
@@ -2033,4 +1895,3 @@ export async function reportContent(
 
   return { success: true };
 }
-

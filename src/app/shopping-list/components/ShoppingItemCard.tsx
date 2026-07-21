@@ -30,7 +30,6 @@ export default function ShoppingItemCard({
   const [isPending, startTransition] = useTransition();
   const [optimisticPurchased, setOptimisticPurchased] = useState<boolean | null>(null);
 
-  // Use optimistic state if available, otherwise use item state
   const displayPurchased = optimisticPurchased !== null ? optimisticPurchased : item.purchased;
 
   const handleTogglePurchased = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -39,30 +38,25 @@ export default function ShoppingItemCard({
     
     const newPurchasedState = !displayPurchased;
     
-    // Optimistically update the UI immediately
     setOptimisticPurchased(newPurchasedState);
     
-    // Notify parent immediately to update local state (this calls handleItemUpdate, not router.refresh)
-    onUpdate(false); // false = don't refresh yet
+    onUpdate(false); 
     
-    // Update server in background
     startTransition(async () => {
       try {
         await updateShoppingItem(item.id, { purchased: newPurchasedState });
-        // Clear optimistic state after successful update
-        // The parent's state should already be updated via handleItemUpdate
+        
         setOptimisticPurchased(null);
-        // Now refresh server data in background to ensure sync
-        // Use a small delay to ensure server has processed
+        
         setTimeout(() => {
-          onUpdate(true); // true = refresh now
+          onUpdate(true); 
         }, 200);
       } catch (error) {
         console.error('Failed to update item:', error);
-        // Revert optimistic update on error
+        
         setOptimisticPurchased(null);
-        // Refresh to get correct state from server
-        onUpdate(true); // true = refresh to get correct state
+        
+        onUpdate(true); 
         alert('Failed to update item. Please try again.');
       }
     });
@@ -81,7 +75,6 @@ export default function ShoppingItemCard({
     }
   };
 
-  // Priority color mapping - similar to pantry expiry colors
   const priorityColor = 
     item.priority === 'high' ? '#ef4444' :
     item.priority === 'medium' ? '#fbbf24' :
@@ -100,7 +93,7 @@ export default function ShoppingItemCard({
               '--card-bg-color': displayPurchased ? '#2a2a2a' : cardAccentColor
             } as any}
           >
-            {/* Purchased checkbox - top left corner */}
+            {}
             <div style={{ position: 'absolute', top: '2px', left: '2px', zIndex: 20 }}>
               <input
                 type="checkbox"
@@ -112,7 +105,7 @@ export default function ShoppingItemCard({
               />
             </div>
 
-            {/* Bulk mode checkbox - top left corner, slightly offset */}
+            {}
             {bulkMode && (
               <div style={{ position: 'absolute', top: '2px', left: '26px', zIndex: 20 }}>
                 <input
@@ -124,7 +117,7 @@ export default function ShoppingItemCard({
                 />
               </div>
             )}
-            {/* Priority box - top right corner for list view */}
+            {}
             <div className="pantry-item-date-box shopping-item-priority-box list-view-priority" style={{ '--priority-color': priorityColor, '--card-bg-color': priorityColor, '--accent-color': priorityColor } as any}>
               <div className="pantry-item-date-box-content" style={{ padding: '8px 4px', minHeight: '35px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <span 
@@ -147,7 +140,7 @@ export default function ShoppingItemCard({
               </div>
             </div>
 
-            {/* Image for list view */}
+            {}
             {item.image_url ? (
               <div className="pantry-item-image-wrapper list-view-image">
                 <img
@@ -244,7 +237,7 @@ export default function ShoppingItemCard({
             '--card-bg-color': displayPurchased ? '#2a2a2a' : cardAccentColor
           } as any}
         >
-          {/* Purchased checkbox - top left corner */}
+          {}
           <div style={{ position: 'absolute', top: '8px', left: '8px', zIndex: 20 }}>
             <input
               type="checkbox"
@@ -256,7 +249,7 @@ export default function ShoppingItemCard({
             />
           </div>
 
-          {/* Bulk mode checkbox - top left corner, slightly offset */}
+          {}
           {bulkMode && (
             <div style={{ position: 'absolute', top: '8px', left: '32px', zIndex: 20 }}>
               <input
@@ -293,7 +286,7 @@ export default function ShoppingItemCard({
             </div>
           )}
 
-          {/* Priority box - top right corner */}
+          {}
           <div className="pantry-item-date-box shopping-item-priority-box" style={{ '--priority-color': priorityColor, '--card-bg-color': priorityColor, '--accent-color': priorityColor } as any}>
             <div className="pantry-item-date-box-content" style={{ padding: '8px 4px', minHeight: '35px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <span 
@@ -388,6 +381,3 @@ export default function ShoppingItemCard({
     </>
   );
 }
-
-
-

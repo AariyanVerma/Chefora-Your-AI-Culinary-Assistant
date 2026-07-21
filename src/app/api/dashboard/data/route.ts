@@ -11,7 +11,6 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Fetch user profile
     let profile: {
       dietary_profile: string | null;
       allergies: string[] | null;
@@ -40,13 +39,10 @@ export async function GET() {
       `;
       profile = profileRes.rows[0] || null;
     } catch (error: any) {
-      // Profile might not exist - that's okay
+      
       console.log('Error fetching profile:', error?.message);
     }
     
-    // Fetch actual recipe count (posted + saved)
-    // Posted recipes: community_posts with author_id = user.id
-    // Saved recipes: community_bookmarks with user_id = user.id
     let totalRecipes = 0;
     try {
       const recipeCountRes = await sql<{ total: number }>`
@@ -65,7 +61,7 @@ export async function GET() {
       `;
       totalRecipes = recipeCountRes.rows[0]?.total || 0;
     } catch (error: any) {
-      // Tables might not exist yet - that's okay, use 0
+      
       if (error?.code === '42P01') {
         console.log('Community tables might not exist yet. Recipe count will be 0.');
       } else {
@@ -73,8 +69,6 @@ export async function GET() {
       }
     }
 
-    // Fetch recent pages (last 3, excluding current dashboard page)
-    // Get most recent visit for each unique path, then take top 3
     let recentPages: Array<{
       path: string;
       title: string;
@@ -105,14 +99,12 @@ export async function GET() {
         LIMIT 3
       `;
       
-      // Enhance recent pages with post data if they're community posts
       recentPages = await Promise.all(recentPagesRes.rows.map(async (page) => {
-        // Check if path is a community post (e.g., /community/p/[postId] or /COMMUNITY/P/[postId])
-        // Use case-insensitive matching and handle both uppercase and lowercase paths
+        
         const normalizedPath = page.path.toLowerCase();
         const postMatch = normalizedPath.match(/^\/community\/p\/([^/]+)$/);
         if (postMatch) {
-          // Extract original postId from the original path to preserve case
+          
           const pathMatch = page.path.match(/^\/community\/p\/([^/]+)$/i);
           const postId = pathMatch ? pathMatch[1] : postMatch[1];
           try {
@@ -126,18 +118,17 @@ export async function GET() {
               };
             }
           } catch (error) {
-            // If post fetch fails, just use the original data
+            
             console.log('Failed to fetch post details for recent page:', error);
           }
         }
         return { ...page, isPost: false };
       }));
     } catch (error) {
-      // Table might not exist yet - that's okay, return empty array
+      
       console.log('Recent pages table might not exist yet:', error);
     }
 
-    // Fetch last recipe viewed
     let lastRecipe: {
       recipe_id: string;
       recipe_title: string | null;
@@ -169,11 +160,10 @@ export async function GET() {
       `;
       lastRecipe = lastRecipeRes.rows[0] || null;
     } catch (error) {
-      // Table might not exist yet - that's okay, return null
+      
       console.log('Last recipe table might not exist yet:', error);
     }
 
-    // Fetch pantry stats and expiring ingredients
     let pantryStats = {
       total_items: 0,
       expiring_1_3_days: 0,
@@ -190,31 +180,28 @@ export async function GET() {
     try {
       pantryStats = await getPantryStats();
       
-      // Get all expiring ingredients (within next 7 days) - excluding expired
       const currentTime = new Date();
       const expiringItems = await getPantryItems({
-        expiry_status: 'expiring_week', // Use 'expiring_week' to get items expiring within 7 days
+        expiry_status: 'expiring_week', 
         sort_by: 'expiry_soonest',
-        limit: 100, // Get a reasonable number to filter and sort
+        limit: 100, 
       });
       
-      // Calculate days until expiry, including items expiring today (0 days)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
       expiringIngredients = expiringItems
         .filter(item => {
-          // Exclude items without expiry date or already expired
+          
           if (!item.expiry_date) return false;
           const expiryDate = new Date(item.expiry_date);
           expiryDate.setHours(0, 0, 0, 0);
-          return expiryDate >= today; // Include today and future dates
+          return expiryDate >= today; 
         })
         .map(item => {
           const expiryDate = new Date(item.expiry_date!);
           expiryDate.setHours(0, 0, 0, 0);
           
-          // Calculate days until expiry (0 = today, 1 = tomorrow, etc.)
           const daysUntilExpiry = Math.floor((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
           
           return {
@@ -223,25 +210,22 @@ export async function GET() {
             daysUntilExpiry: daysUntilExpiry,
           };
         })
-        .filter(item => item.daysUntilExpiry >= 0 && item.daysUntilExpiry <= 7) // Include today (0) up to 7 days
+        .filter(item => item.daysUntilExpiry >= 0 && item.daysUntilExpiry <= 7) 
         .sort((a, b) => a.daysUntilExpiry - b.daysUntilExpiry);
-      // Return all expiring ingredients (including today and up to 7 days), sorted by urgency
+      
     } catch (error: any) {
       console.log('Error fetching pantry data:', error?.message);
     }
 
-    // Fetch weekly meal plan count
     let weeklyMeals = 0;
     try {
       const startOfWeek = new Date();
-      startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + 1); // Monday
+      startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + 1); 
       startOfWeek.setHours(0, 0, 0, 0);
       const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(endOfWeek.getDate() + 6); // Sunday
+      endOfWeek.setDate(endOfWeek.getDate() + 6); 
       endOfWeek.setHours(23, 59, 59, 999);
 
-      // Count meals from community posts created this week (as a proxy for meal planning)
-      // In the future, you might want a dedicated meal_plans table
       const weeklyMealsRes = await sql<{ count: number }>`
         SELECT COUNT(*)::INTEGER as count
         FROM community_posts
@@ -255,9 +239,6 @@ export async function GET() {
       console.log('Error fetching weekly meals:', error?.message);
     }
 
-    // Calculate streak (days in a row with activity)
-    // For now, we'll use community posts as activity indicator
-    // In the future, you might want a dedicated activity tracking table
     let streak = 0;
     try {
       const streakRes = await sql<{ activity_date: Date }>`
@@ -283,7 +264,7 @@ export async function GET() {
             consecutiveDays++;
             checkDate.setDate(checkDate.getDate() - 1);
           } else if (activityDate.getTime() < checkDate.getTime()) {
-            // Gap found, stop counting
+            
             break;
           }
         }
@@ -294,10 +275,8 @@ export async function GET() {
       console.log('Error calculating streak:', error?.message);
     }
 
-    // Count recipes cooked (saved recipes + posted recipes)
     const recipesCooked = totalRecipes;
 
-    // Fetch other stats
     const stats = {
       totalRecipes,
       recipesCooked,
@@ -335,4 +314,3 @@ export async function GET() {
     );
   }
 }
-

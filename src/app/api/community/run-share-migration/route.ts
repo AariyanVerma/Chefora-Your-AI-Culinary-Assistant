@@ -2,10 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 
-// This endpoint runs the share_count migration
-// Only run this once to add share_count functionality
-
-// GET handler - provides instructions on how to use the endpoint
 export async function GET(request: NextRequest) {
   return NextResponse.json({
     message: 'This endpoint requires a POST request.',
@@ -25,21 +21,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only allow in development or for admin users
-    // In production, you might want to add admin check here
     if (process.env.NODE_ENV === 'production') {
       return NextResponse.json({ error: 'Not available in production' }, { status: 403 });
     }
 
-    // Run the migration SQL
     try {
-      // Add share_count column
+      
       await sql`
         ALTER TABLE community_posts 
         ADD COLUMN IF NOT EXISTS share_count INTEGER DEFAULT 0
       `;
 
-      // Create community_shares table
       await sql`
         CREATE TABLE IF NOT EXISTS community_shares (
           id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -50,7 +42,6 @@ export async function POST(request: NextRequest) {
         )
       `;
 
-      // Create indexes
       await sql`
         CREATE INDEX IF NOT EXISTS idx_community_shares_user_id ON community_shares(user_id)
       `;
@@ -61,7 +52,6 @@ export async function POST(request: NextRequest) {
         CREATE INDEX IF NOT EXISTS idx_community_shares_user_created ON community_shares(user_id, created_at DESC)
       `;
 
-      // Update the trigger function
       await sql`
         CREATE OR REPLACE FUNCTION update_post_counters()
         RETURNS TRIGGER AS $$
@@ -96,7 +86,6 @@ export async function POST(request: NextRequest) {
         $$ LANGUAGE plpgsql
       `;
 
-      // Create trigger for shares
       await sql`
         DROP TRIGGER IF EXISTS trigger_update_post_shares ON community_shares
       `;
@@ -110,7 +99,7 @@ export async function POST(request: NextRequest) {
         message: 'Share count migration completed successfully'
       });
     } catch (error: any) {
-      // Check if it's a "already exists" error (which is fine)
+      
       if (error?.message?.includes('already exists') || error?.message?.includes('duplicate')) {
         return NextResponse.json({ 
           success: true,

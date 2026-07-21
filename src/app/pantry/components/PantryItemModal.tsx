@@ -56,7 +56,6 @@ const UNIT_GROUPS = {
   'Food-Specific': ['slice', 'serving', 'portion', 'bunch', 'head', 'clove', 'stalk', 'sprig', 'leaf', 'strip']
 };
 
-// Flatten for default value check
 const UNITS = Object.values(UNIT_GROUPS).flat();
 
 interface PantryItemModalProps {
@@ -98,10 +97,10 @@ export default function PantryItemModal({ item, onClose }: PantryItemModalProps)
   }, [onClose]);
 
   useEffect(() => {
-    // Add body class when modal opens
+    
     document.body.classList.add('pantry-modal-open');
     return () => {
-      // Remove body class when modal closes
+      
       document.body.classList.remove('pantry-modal-open');
     };
   }, []);
@@ -164,7 +163,7 @@ export default function PantryItemModal({ item, onClose }: PantryItemModalProps)
         name: formData.name.trim(),
         quantity: String(formData.quantity || 1),
         unit: formData.unit || 'pcs',
-        store: '', // Pantry doesn't have store field
+        store: '', 
         category: formData.category || '',
       });
 
@@ -222,7 +221,7 @@ export default function PantryItemModal({ item, onClose }: PantryItemModalProps)
         purchase_date: formData.purchase_date || null,
         is_opened: formData.is_opened,
         notes: formData.notes.trim() || null,
-        price: formData.price.trim() || null,
+        price: formData.price === '' ? null : Number(formData.price),
         brand: formData.brand.trim() || null,
         is_running_low: formData.is_running_low,
         image_url: formData.image_url.trim() || null,
@@ -258,7 +257,7 @@ export default function PantryItemModal({ item, onClose }: PantryItemModalProps)
 
   const modalContent = (
     <>
-      {/* Backdrop */}
+      {}
       <div 
         style={{
           position: 'fixed',
@@ -272,7 +271,7 @@ export default function PantryItemModal({ item, onClose }: PantryItemModalProps)
         }}
         onClick={onClose}
       />
-      {/* Modal */}
+      {}
       <div className="pantry-modal" onClick={(e) => e.stopPropagation()}>
         <div className="card-wrapper pantry-modal-card">
           <div className="card-background"></div>
@@ -667,4 +666,3 @@ export default function PantryItemModal({ item, onClose }: PantryItemModalProps)
 
   return createPortal(modalContent, document.body);
 }
-

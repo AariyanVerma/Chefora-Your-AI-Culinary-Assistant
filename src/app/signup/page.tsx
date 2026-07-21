@@ -8,7 +8,6 @@ const Spline = dynamic(() => import('@splinetool/react-spline').then((mod) => mo
   ssr: false,
 });
 
-// Bot dialogue messages (general)
 const botDialogues = [
   "Hey there, chef! 👋",
   "Are you new here? Welcome!",
@@ -24,9 +23,18 @@ const botDialogues = [
   "Ready to explore new recipes?",
 ];
 
-// Personalized dialogue messages (witty, flirty, playful)
+type SignupForm = {
+  name: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  country: string;
+  timeZone: string;
+  cookFrequency: string;
+};
+
 const getPersonalizedDialogues = (name: string): string[] => {
-  const firstName = name.split(' ')[0]; // Get first name
+  const firstName = name.split(' ')[0]; 
   return [
     `Oh! You're ${firstName}! 😊`,
     `Let's cook, ${firstName}! 🍳`,
@@ -46,8 +54,7 @@ const getPersonalizedDialogues = (name: string): string[] => {
   ];
 };
 
-// Field-specific dialogue generators - fun, witty, and interactive with user context
-const getFieldDialogues = (fieldName: string, formData: typeof form) => {
+const getFieldDialogues = (fieldName: string, formData: SignupForm) => {
   const firstName = formData.name.trim().split(' ')[0] || 'chef';
   const hasName = formData.name.trim().length > 0;
   const country = formData.country.trim();
@@ -220,8 +227,7 @@ const getFieldDialogues = (fieldName: string, formData: typeof form) => {
   return baseDialogues[fieldName] || [];
 };
 
-// Cook frequency dialogues with context
-const getCookFrequencyDialogues = (frequency: string, formData: typeof form) => {
+const getCookFrequencyDialogues = (frequency: string, formData: SignupForm) => {
   const firstName = formData.name.trim().split(' ')[0] || 'chef';
   const hasName = formData.name.trim().length > 0;
   const country = formData.country.trim();
@@ -290,8 +296,7 @@ const getCookFrequencyDialogues = (frequency: string, formData: typeof form) => 
   return dialogues[frequency] || [];
 };
 
-// Error-specific dialogue messages - fun, witty, and helpful
-const getErrorDialogues = (errorType: string, formData: typeof form): string[] => {
+const getErrorDialogues = (errorType: string, formData: SignupForm): string[] => {
   const firstName = formData.name.trim().split(' ')[0] || 'chef';
   const hasName = formData.name.trim().length > 0;
   
@@ -394,7 +399,6 @@ const getErrorDialogues = (errorType: string, formData: typeof form): string[] =
   return errorDialogues[errorType] || errorDialogues.general;
 };
 
-// Comprehensive list of timezones
 const timezones = [
   { value: '', label: 'Select timezone' },
   { value: 'UTC', label: 'UTC (Coordinated Universal Time)' },
@@ -466,154 +470,135 @@ export default function SignupPage() {
   const dialogueTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const formRef = useRef(form);
   
-  // Keep formRef updated
   useEffect(() => {
     formRef.current = form;
   }, [form]);
 
-  // Generate random position around bot (strictly avoiding bot area) - for general messages
   const getRandomPosition = (existingPositions: Array<{ top: number; left: number }> = []) => {
-    // Bot is at center-left: roughly 15-35% left, 25-55% top
-    // We need to avoid this area completely
+    
     let attempts = 0;
-    let position;
+    let position: { top: number; left: number };
     
     do {
       const zones = [
-        // Top-left corner (safe zone) - constrained to viewport (15-75% top, 5-70% left)
+        
         { top: Math.min(Math.random() * 15 + 18, 70), left: Math.random() * 10 + 5 },
-        // Top-right of left panel (safe zone) - constrained
+        
         { top: Math.min(Math.random() * 15 + 18, 70), left: Math.random() * 8 + 35 },
-        // Left edge top (safe zone) - constrained
+        
         { top: Math.min(Math.random() * 15 + 18, 70), left: Math.random() * 5 + 5 },
-        // Left edge bottom (safe zone) - constrained
+        
         { top: Math.min(Math.random() * 15 + 50, 70), left: Math.random() * 5 + 5 },
-        // Bottom-left corner (safe zone) - constrained
+        
         { top: Math.min(Math.random() * 10 + 60, 70), left: Math.random() * 10 + 5 },
-        // Bottom-right of left panel (safe zone) - constrained
+        
         { top: Math.min(Math.random() * 10 + 60, 70), left: Math.random() * 8 + 35 },
-        // Far left edge middle (safe zone) - constrained
+        
         { top: Math.min(Math.random() * 10 + 45, 70), left: Math.random() * 5 + 5 },
-        // Far left edge top (safe zone) - constrained
+        
         { top: Math.min(Math.random() * 15 + 18, 70), left: Math.random() * 5 + 5 },
       ];
       
       position = zones[Math.floor(Math.random() * zones.length)];
       
-      // Ensure position is within viewport bounds (accounting for dialogue size ~300px width, ~100px height)
-      // Container starts at -20vh with 10vh padding, so viewport starts at ~12% of container height
-      // Use more conservative bounds to prevent any cropping
-      position.top = Math.max(15, Math.min(position.top, 75)); // Keep between 15% and 75% from top (accounts for container offset)
-      position.left = Math.max(5, Math.min(position.left, 70)); // Keep between 5% and 70% from left (more padding for bubble width)
+      position.top = Math.max(15, Math.min(position.top, 75)); 
+      position.left = Math.max(5, Math.min(position.left, 70)); 
       
       attempts++;
       
-      // Check if position is too close to bot area (15-35% left, 25-55% top)
       const tooCloseToBot = position.left >= 12 && position.left <= 42 && 
                            position.top >= 20 && position.top <= 60;
       
-      // Check if position is too close to existing dialogues
       const tooCloseToExisting = existingPositions.some(existing => {
         const distance = Math.sqrt(
           Math.pow(position.top - existing.top, 2) + 
           Math.pow(position.left - existing.left, 2)
         );
-        return distance < 15; // Minimum 15% distance between dialogues
+        return distance < 15; 
       });
       
       if (!tooCloseToBot && !tooCloseToExisting) break;
-    } while (attempts < 20); // Max 20 attempts to find a good position
+    } while (attempts < 20); 
     
     return position;
   };
 
-  // Generate position near/above bot's head - for personalized/signup-related messages
   const getBotHeadPosition = (existingPositions: Array<{ top: number; left: number }> = []) => {
-    // Bot's head/face is roughly at: 22-28% left, 32-38% top (avoid this area with more padding)
-    // Position dialogues around the head like speech bubbles, with more space to avoid covering bot
     
-    // Get all active dialogue positions (combine existingPositions with current activeDialogues)
     const allActivePositions = [
       ...existingPositions,
       ...activeDialogues.map(d => ({ top: d.top, left: d.left }))
-    ].filter(p => p.top >= 0 && p.top <= 100 && p.left >= 0 && p.left <= 100); // Filter out invalid positions
+    ].filter(p => p.top >= 0 && p.top <= 100 && p.left >= 0 && p.left <= 100); 
     
     let attempts = 0;
-    let position;
+    let position: { top: number; left: number };
     
     do {
       const positions = [
-        // Far left side (well away from bot) - constrained to viewport (15-75% top, 5-70% left)
+        
         { top: Math.min(20 + Math.random() * 10, 70), left: 5 + Math.random() * 5 },
-        // Far left, middle height - constrained
+        
         { top: Math.min(35 + Math.random() * 12, 70), left: 5 + Math.random() * 5 },
-        // Far left, lower - constrained
+        
         { top: Math.min(50 + Math.random() * 12, 70), left: 5 + Math.random() * 5 },
-        // Above and far to the right of head (more space) - constrained
+        
         { top: Math.min(20 + Math.random() * 8, 70), left: 35 + Math.random() * 8 },
-        // Above and far to the left of head - constrained
+        
         { top: Math.min(20 + Math.random() * 8, 70), left: 5 + Math.random() * 6 },
-        // To the right side of head (further away) - constrained
+        
         { top: Math.min(35 + Math.random() * 12, 70), left: 35 + Math.random() * 7 },
-        // To the left side of head (further away) - constrained
+        
         { top: Math.min(35 + Math.random() * 12, 70), left: 5 + Math.random() * 6 },
-        // Above head, far to the right - constrained (min 18% from top)
+        
         { top: Math.min(Math.max(18, 20 + Math.random() * 8), 70), left: 35 + Math.random() * 6 },
-        // Above head, far to the left - constrained
+        
         { top: Math.min(Math.max(18, 20 + Math.random() * 8), 70), left: 5 + Math.random() * 5 },
-        // Below and far to the right - constrained
+        
         { top: Math.min(50 + Math.random() * 12, 70), left: 35 + Math.random() * 7 },
-        // Below and far to the left - constrained
+        
         { top: Math.min(50 + Math.random() * 12, 70), left: 5 + Math.random() * 6 },
       ];
       
       position = positions[Math.floor(Math.random() * positions.length)];
       
-      // Ensure position is within viewport bounds (accounting for dialogue size ~300px width, ~100px height)
-      // Container starts at -20vh with 10vh padding, so viewport starts at ~12% of container height
-      // Use more conservative bounds to prevent any cropping
-      position.top = Math.max(15, Math.min(position.top, 75)); // Keep between 15% and 75% from top (accounts for container offset)
-      position.left = Math.max(5, Math.min(position.left, 70)); // Keep between 5% and 70% from left (more padding for bubble width)
+      position.top = Math.max(15, Math.min(position.top, 75)); 
+      position.left = Math.max(5, Math.min(position.left, 70)); 
       
       attempts++;
       
-      // Check if position is too close to bot's face (avoid 18-32% left, 28-42% top with more padding)
       const tooCloseToBot = position.left >= 15 && position.left <= 35 && 
                            position.top >= 25 && position.top <= 45;
       
-      // Check if position is too close to existing dialogues
       const tooCloseToExisting = allActivePositions.some(existing => {
         const distance = Math.sqrt(
           Math.pow(position.top - existing.top, 2) + 
           Math.pow(position.left - existing.left, 2)
         );
-        return distance < 12; // Minimum 12% distance between dialogues
+        return distance < 12; 
       });
       
       if (!tooCloseToBot && !tooCloseToExisting) break;
       
-    } while (attempts < 50); // Try up to 50 times to find a good position
+    } while (attempts < 50); 
     
     return position;
   };
 
-  // Manage bot dialogue messages
   useEffect(() => {
     if (!splineLoaded) return;
 
     const showDialogue = (usePersonalized = false) => {
       setActiveDialogues(prev => {
-        // Don't show if already have 2 active dialogues
+        
         if (prev.length >= 2) return prev;
 
-        // Use personalized messages if name is available and requested
         let availableDialogues: string[];
         if (usePersonalized && form.name.trim().length > 0) {
           availableDialogues = getPersonalizedDialogues(form.name).filter(
             d => !prev.some(ad => ad.text === d)
           );
         } else {
-          // Use general messages
+          
           availableDialogues = botDialogues.filter(
             d => !prev.some(ad => ad.text === d)
           );
@@ -623,29 +608,26 @@ export default function SignupPage() {
 
         const randomDialogue = availableDialogues[Math.floor(Math.random() * availableDialogues.length)];
         const existingPositions = prev.map(d => ({ top: d.top, left: d.left }));
-        // Use bot head position only for personalized messages, random positions for general messages
+        
         const isPersonalized = usePersonalized && form.name.trim().length > 0;
         const position = isPersonalized 
           ? getBotHeadPosition(existingPositions)
           : getRandomPosition(existingPositions);
         const id = `dialogue-${Date.now()}-${Math.random()}`;
 
-        // Start fade-out after random duration (3-5 seconds)
         const fadeDelay = 3000 + Math.random() * 2000;
-        const maxLifetime = 10000; // Maximum 10 seconds before forced removal
+        const maxLifetime = 10000; 
         
-        // Main fade-out timeout
         const fadeTimeout = setTimeout(() => {
           setActiveDialogues(current => {
             const dialogue = current.find(d => d.id === id);
-            if (!dialogue) return current; // Already removed
+            if (!dialogue) return current; 
             
             return current.map(d => 
               d.id === id ? { ...d, fading: true } : d
             );
           });
           
-          // Remove after fade-out animation
           const removeTimeout = setTimeout(() => {
             setActiveDialogues(current => current.filter(d => d.id !== id));
             dialogueTimeoutsRef.current.delete(id);
@@ -655,17 +637,14 @@ export default function SignupPage() {
           dialogueTimeoutsRef.current.set(`${id}-remove`, removeTimeout);
         }, fadeDelay);
 
-        // Safety timeout - force removal after max lifetime
         const maxLifetimeTimeout = setTimeout(() => {
           setActiveDialogues(current => {
             const dialogue = current.find(d => d.id === id);
-            if (!dialogue) return current; // Already removed
+            if (!dialogue) return current; 
             
-            // Force remove if still active after max lifetime
             return current.filter(d => d.id !== id);
           });
           
-          // Clean up all related timeouts
           const fadeTimeout = dialogueTimeoutsRef.current.get(id);
           const removeTimeout = dialogueTimeoutsRef.current.get(`${id}-remove`);
           if (fadeTimeout) {
@@ -692,33 +671,30 @@ export default function SignupPage() {
       });
     };
 
-    // Show first dialogue after random delay (1-3 seconds)
     const initialDelay = 1000 + Math.random() * 2000;
     const initialTimeout = setTimeout(() => {
       showDialogue();
     }, initialDelay);
 
-    // Function to schedule next dialogue
     const scheduledTimeouts: NodeJS.Timeout[] = [];
     const scheduleNextDialogue = () => {
-      // Random delay between 4-10 seconds
+      
       const delay = 4000 + Math.random() * 6000;
       const timeout = setTimeout(() => {
-        // Use general messages for scheduled dialogues (not personalized)
+        
         showDialogue(false);
-        // Schedule next one
+        
         scheduleNextDialogue();
       }, delay);
       scheduledTimeouts.push(timeout);
     };
 
-    // Start scheduling dialogues
     scheduleNextDialogue();
 
     return () => {
       clearTimeout(initialTimeout);
       scheduledTimeouts.forEach(timeout => clearTimeout(timeout));
-      // Clear all dialogue timeouts (including max and remove timeouts)
+      
       dialogueTimeoutsRef.current.forEach(timeout => {
         if (timeout) clearTimeout(timeout);
       });
@@ -726,25 +702,23 @@ export default function SignupPage() {
     };
   }, [splineLoaded, form.name]);
 
-  // Periodic cleanup to remove stuck dialogues
   useEffect(() => {
     if (!splineLoaded) return;
     
     const cleanupInterval = setInterval(() => {
       setActiveDialogues(current => {
         const now = Date.now();
-        const maxAge = 12000; // 12 seconds max age
+        const maxAge = 12000; 
         
         return current.filter(dialogue => {
-          // Extract timestamp from dialogue ID
+          
           const timestampMatch = dialogue.id.match(/\d+/);
           if (timestampMatch) {
             const dialogueTime = parseInt(timestampMatch[0]);
             const age = now - dialogueTime;
             
-            // Remove if older than max age
             if (age > maxAge) {
-              // Clean up timeouts
+              
               const fadeTimeout = dialogueTimeoutsRef.current.get(dialogue.id);
               const removeTimeout = dialogueTimeoutsRef.current.get(`${dialogue.id}-remove`);
               const maxTimeout = dialogueTimeoutsRef.current.get(`${dialogue.id}-max`);
@@ -762,35 +736,30 @@ export default function SignupPage() {
                 dialogueTimeoutsRef.current.delete(`${dialogue.id}-max`);
               }
               
-              return false; // Remove this dialogue
+              return false; 
             }
           }
-          return true; // Keep this dialogue
+          return true; 
         });
       });
-    }, 2000); // Check every 2 seconds
+    }, 2000); 
     
     return () => {
       clearInterval(cleanupInterval);
     };
   }, [splineLoaded]);
 
-  // Track shown dialogues to avoid repeats
   const shownDialoguesRef = useRef<Set<string>>(new Set());
   
-  // Idle detection for showing contextual dialogues
   const idleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastActivityRef = useRef<number>(Date.now());
 
-
-  // Generate contextual dialogues based on all gathered info
   const showContextualDialogue = useCallback(() => {
     if (!splineLoaded) return;
     
     const contextualDialogues: string[] = [];
     const firstName = form.name.trim().split(' ')[0];
     
-    // Build contextual messages based on filled fields
     if (form.name.trim().length > 0) {
       contextualDialogues.push(
         `Hey ${firstName}, still here? Let's finish this! 😊`,
@@ -838,7 +807,6 @@ export default function SignupPage() {
       );
     }
     
-    // Generic contextual messages
     contextualDialogues.push(
       "Hey! Still thinking? I'm here to help! 💫",
       "Take your time, but don't forget I'm waiting! 😄",
@@ -853,13 +821,12 @@ export default function SignupPage() {
     const randomDialogue = contextualDialogues[Math.floor(Math.random() * contextualDialogues.length)];
     
     setActiveDialogues(prev => {
-      // Don't show if already have 2 dialogues
+      
       if (prev.length >= 2) return prev;
       
-      // Clear existing contextual dialogues
       prev.forEach(d => {
         if (d.id.includes('contextual-')) {
-          // Clean up all timeout types
+          
           const fadeTimeout = dialogueTimeoutsRef.current.get(d.id);
           const removeTimeout = dialogueTimeoutsRef.current.get(`${d.id}-remove`);
           const maxTimeout = dialogueTimeoutsRef.current.get(`${d.id}-max`);
@@ -885,9 +852,8 @@ export default function SignupPage() {
       const id = `contextual-${Date.now()}`;
       
       const fadeDelay = 4000 + Math.random() * 2000;
-      const maxLifetime = 10000; // Maximum 10 seconds before forced removal
+      const maxLifetime = 10000; 
       
-      // Main fade-out timeout
       const fadeTimeout = setTimeout(() => {
         setActiveDialogues(current => {
           const dialogue = current.find(d => d.id === id);
@@ -908,7 +874,6 @@ export default function SignupPage() {
         dialogueTimeoutsRef.current.set(`${id}-remove`, removeTimeout);
       }, fadeDelay);
       
-      // Safety timeout - force removal after max lifetime
       const maxLifetimeTimeout = setTimeout(() => {
         setActiveDialogues(current => {
           const dialogue = current.find(d => d.id === id);
@@ -916,7 +881,6 @@ export default function SignupPage() {
           return current.filter(d => d.id !== id);
         });
         
-        // Clean up all related timeouts
         const fadeTimeout = dialogueTimeoutsRef.current.get(id);
         const removeTimeout = dialogueTimeoutsRef.current.get(`${id}-remove`);
         if (fadeTimeout) {
@@ -942,35 +906,31 @@ export default function SignupPage() {
       }];
     });
     
-    // Set up next idle check
     idleTimeoutRef.current = setTimeout(() => {
       showContextualDialogue();
     }, 30000);
   }, [splineLoaded, form.name, form.email, form.country, form.timeZone, form.cookFrequency, form.password]);
 
-  // Track user activity for idle detection
   useEffect(() => {
     if (!splineLoaded) return;
     
     const updateActivity = () => {
       lastActivityRef.current = Date.now();
-      // Reset idle timeout
+      
       if (idleTimeoutRef.current) {
         clearTimeout(idleTimeoutRef.current);
       }
-      // Set new idle timeout
+      
       idleTimeoutRef.current = setTimeout(() => {
         showContextualDialogue();
-      }, 30000); // 30 seconds
+      }, 30000); 
     };
 
-    // Track mouse movements, clicks, and keyboard
     document.addEventListener('mousemove', updateActivity, { passive: true });
     document.addEventListener('click', updateActivity, { passive: true });
     document.addEventListener('keydown', updateActivity, { passive: true });
     document.addEventListener('scroll', updateActivity, { passive: true });
 
-    // Initialize idle timeout
     idleTimeoutRef.current = setTimeout(() => {
       showContextualDialogue();
     }, 30000);
@@ -986,13 +946,12 @@ export default function SignupPage() {
     };
   }, [splineLoaded, showContextualDialogue]);
 
-  // Forward pointer events to Spline for full-screen interaction
   useEffect(() => {
     const forwardPointerEvents = (e: PointerEvent) => {
-      // Only forward if not clicking on form elements
+      
       const target = e.target as HTMLElement;
       if (target.closest('.auth-form-card input, .auth-form-card button, .auth-form-card select, .auth-form-card a')) {
-        return; // Don't forward events when interacting with form elements
+        return; 
       }
 
       if (splineRef.current) {
@@ -1027,40 +986,35 @@ export default function SignupPage() {
 
   function updateField<K extends keyof typeof form>(key: K, value: string) {
     setForm(prev => ({ ...prev, [key]: value }));
-    // Update last activity time
+    
     lastActivityRef.current = Date.now();
-    // Reset idle timeout
+    
     if (idleTimeoutRef.current) {
       clearTimeout(idleTimeoutRef.current);
     }
-    // Set new idle timeout
+    
     idleTimeoutRef.current = setTimeout(() => {
       showContextualDialogue();
-    }, 30000); // 30 seconds
+    }, 30000); 
   }
 
-
-  // Check if a field has validation errors
   const checkFieldError = (fieldName: string, fieldElement: HTMLElement | null): boolean => {
     if (!fieldElement) return false;
     
     const fieldValue = formRef.current[fieldName as keyof typeof formRef.current];
     const isEmpty = !fieldValue || String(fieldValue).trim().length === 0;
     
-    // Check for browser validation errors first (this catches "Please fill out this field" etc.)
     if (fieldElement instanceof HTMLInputElement || fieldElement instanceof HTMLSelectElement) {
-      // Check validity - this catches all browser validation errors
+      
       if (!fieldElement.validity.valid) {
         return true;
       }
       
-      // Also check if field is required and empty
       if (fieldElement.required && isEmpty) {
         return true;
       }
     }
     
-    // Check for custom validation errors
     if (fieldName === 'email' && fieldValue) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(String(fieldValue).trim())) {
@@ -1083,17 +1037,14 @@ export default function SignupPage() {
     return false;
   };
 
-  // Show field-specific dialogue when user finishes typing in a field
   const showFieldDialogue = (fieldName: string, fieldElement: HTMLElement | null = null) => {
     if (!splineLoaded) return;
     
-    // Use latest form data from ref
     const currentForm = formRef.current;
     
-    // First check if field has errors - if so, show error dialogue instead
     const hasError = checkFieldError(fieldName, fieldElement);
     if (hasError) {
-      // Determine error type
+      
       let errorType = fieldName;
       if (fieldName === 'email') {
         const fieldValue = currentForm.email;
@@ -1118,21 +1069,19 @@ export default function SignupPage() {
       return;
     }
     
-    // Field is valid, check if it has a value before showing regular dialogue
     const fieldValue = currentForm[fieldName as keyof typeof currentForm];
     if (!fieldValue || String(fieldValue).trim().length === 0) {
-      // Field is empty but not required or not in error state, don't show dialogue
+      
       return;
     }
     
-    // Handle cookFrequency differently
     let dialogues: string[] = [];
     if (fieldName === 'cookFrequency') {
       const frequency = currentForm.cookFrequency as 'rarely' | 'sometimes' | 'daily' | '';
       if (frequency) {
         dialogues = getCookFrequencyDialogues(frequency, currentForm);
       } else {
-        return; // No valid selection
+        return; 
       }
     } else {
       dialogues = getFieldDialogues(fieldName, currentForm);
@@ -1143,34 +1092,31 @@ export default function SignupPage() {
       return;
     }
     
-    // Get dialogues that haven't been shown for this field
     const fieldKey = fieldName === 'cookFrequency' ? `cookFrequency-${currentForm.cookFrequency}` : fieldName;
     const availableDialogues = dialogues.filter(d => {
       const dialogueKey = `${fieldKey}-${d}`;
       return !shownDialoguesRef.current.has(dialogueKey);
     });
     
-    // If all dialogues have been shown, use all dialogues again (loop)
     let randomDialogue: string;
     let dialogueKey: string;
     
     if (availableDialogues.length === 0) {
-      // All dialogues shown, loop back - pick random from all
+      
       randomDialogue = dialogues[Math.floor(Math.random() * dialogues.length)];
       dialogueKey = `${fieldKey}-${randomDialogue}`;
-      // Don't track in shownDialoguesRef to allow looping
+      
     } else {
-      // Get a random dialogue from available ones
+      
       randomDialogue = availableDialogues[Math.floor(Math.random() * availableDialogues.length)];
       dialogueKey = `${fieldKey}-${randomDialogue}`;
       shownDialoguesRef.current.add(dialogueKey);
     }
     
-    // Clear existing field dialogues
     setActiveDialogues(prev => {
       prev.forEach(d => {
         if (d.id.includes('field-')) {
-          // Clean up all timeout types
+          
           const fadeTimeout = dialogueTimeoutsRef.current.get(d.id);
           const removeTimeout = dialogueTimeoutsRef.current.get(`${d.id}-remove`);
           const maxTimeout = dialogueTimeoutsRef.current.get(`${d.id}-max`);
@@ -1190,28 +1136,23 @@ export default function SignupPage() {
         }
       });
       
-      // Fade out existing field dialogues
       return prev.map(d => d.id.includes('field-') ? { ...d, fading: true } : d);
     });
     
-    // Show new field dialogue after a short delay
     setTimeout(() => {
       setActiveDialogues(prev => {
-        // Remove faded field dialogues
+        
         const cleaned = prev.filter(d => !(d.id.includes('field-') && d.fading));
         
-        // Don't show if already have 2 dialogues
         if (cleaned.length >= 2) return cleaned;
         
         const existingPositions = cleaned.map(d => ({ top: d.top, left: d.left }));
         const position = getBotHeadPosition(existingPositions);
         const id = `field-${fieldKey}-${Date.now()}`;
         
-        // Start fade-out after 4-6 seconds
         const fadeDelay = 4000 + Math.random() * 2000;
-        const maxLifetime = 10000; // Maximum 10 seconds before forced removal
+        const maxLifetime = 10000; 
         
-        // Main fade-out timeout
         const fadeTimeout = setTimeout(() => {
           setActiveDialogues(current => {
             const dialogue = current.find(d => d.id === id);
@@ -1232,7 +1173,6 @@ export default function SignupPage() {
           dialogueTimeoutsRef.current.set(`${id}-remove`, removeTimeout);
         }, fadeDelay);
         
-        // Safety timeout - force removal after max lifetime
         const maxLifetimeTimeout = setTimeout(() => {
           setActiveDialogues(current => {
             const dialogue = current.find(d => d.id === id);
@@ -1240,7 +1180,6 @@ export default function SignupPage() {
             return current.filter(d => d.id !== id);
           });
           
-          // Clean up all related timeouts
           const fadeTimeout = dialogueTimeoutsRef.current.get(id);
           const removeTimeout = dialogueTimeoutsRef.current.get(`${id}-remove`);
           if (fadeTimeout) {
@@ -1268,7 +1207,6 @@ export default function SignupPage() {
     }, 500);
   };
 
-  // Show error dialogue when validation fails
   const showErrorDialogue = (errorType: string) => {
     if (!splineLoaded) return;
     
@@ -1278,10 +1216,10 @@ export default function SignupPage() {
     const randomDialogue = errorDialogues[Math.floor(Math.random() * errorDialogues.length)];
     
     setActiveDialogues(prev => {
-      // Clear existing error dialogues
+      
       prev.forEach(d => {
         if (d.id.includes('error-')) {
-          // Clean up all timeout types
+          
           const fadeTimeout = dialogueTimeoutsRef.current.get(d.id);
           const removeTimeout = dialogueTimeoutsRef.current.get(`${d.id}-remove`);
           const maxTimeout = dialogueTimeoutsRef.current.get(`${d.id}-max`);
@@ -1306,11 +1244,9 @@ export default function SignupPage() {
       const position = getBotHeadPosition(existingPositions);
       const id = `error-${errorType}-${Date.now()}`;
       
-      // Error dialogues show for 5-7 seconds
       const fadeDelay = 5000 + Math.random() * 2000;
-      const maxLifetime = 10000; // Maximum 10 seconds before forced removal
+      const maxLifetime = 10000; 
       
-      // Main fade-out timeout
       const fadeTimeout = setTimeout(() => {
         setActiveDialogues(current => {
           const dialogue = current.find(d => d.id === id);
@@ -1331,7 +1267,6 @@ export default function SignupPage() {
         dialogueTimeoutsRef.current.set(`${id}-remove`, removeTimeout);
       }, fadeDelay);
       
-      // Safety timeout - force removal after max lifetime
       const maxLifetimeTimeout = setTimeout(() => {
         setActiveDialogues(current => {
           const dialogue = current.find(d => d.id === id);
@@ -1339,7 +1274,6 @@ export default function SignupPage() {
           return current.filter(d => d.id !== id);
         });
         
-        // Clean up all related timeouts
         const fadeTimeout = dialogueTimeoutsRef.current.get(id);
         const removeTimeout = dialogueTimeoutsRef.current.get(`${id}-remove`);
         if (fadeTimeout) {
@@ -1369,9 +1303,8 @@ export default function SignupPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setLoading(false); // Don't set loading until validation passes
+    setLoading(false); 
 
-    // Client-side validation
     if (!form.name.trim()) {
       setError('Name is required');
       showErrorDialogue('name');
@@ -1384,7 +1317,6 @@ export default function SignupPage() {
       return;
     }
 
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(form.email.trim())) {
       setError('Please enter a valid email address');
@@ -1398,7 +1330,6 @@ export default function SignupPage() {
       return;
     }
 
-    // Validate password length
     if (form.password.trim().length < 6) {
       setError('Password must be at least 6 characters');
       showErrorDialogue('passwordTooShort');
@@ -1411,14 +1342,12 @@ export default function SignupPage() {
       return;
     }
 
-    // Check if passwords match
     if (form.password !== form.confirmPassword) {
       setError('Passwords do not match');
       showErrorDialogue('passwordMismatch');
       return;
     }
 
-    // All validation passed, proceed with submission
     setLoading(true);
 
     try {
@@ -1430,12 +1359,11 @@ export default function SignupPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        // Handle server-side errors
+        
         const errorMessage = data.error || 'Something went wrong';
         setError(errorMessage);
         setLoading(false);
         
-        // Show appropriate error dialogue based on error message
         if (errorMessage.toLowerCase().includes('email')) {
           showErrorDialogue('emailInvalid');
         } else if (errorMessage.toLowerCase().includes('password')) {
@@ -1455,10 +1383,9 @@ export default function SignupPage() {
     }
   }
 
-
   return (
     <div className="auth-page-container">
-      {/* Animated background */}
+      {}
       <div className="auth-bg-animated">
         <div className="gradient-orb orb-1"></div>
         <div className="gradient-orb orb-2"></div>
@@ -1466,7 +1393,7 @@ export default function SignupPage() {
       </div>
 
       <div className="auth-layout">
-        {/* Left side - 3D Spline Scene */}
+        {}
         <div 
           className={`auth-3d-panel ${splineLoaded ? 'spline-loaded' : 'spline-loading'}`} 
           ref={splineRef}
@@ -1477,7 +1404,6 @@ export default function SignupPage() {
               splineAppRef.current = app;
               console.log('Spline scene loaded, app:', app);
               
-              // Helper: Log all object names in the scene
               console.log('=== SPLINE OBJECTS ===');
               const logObjects = (obj: any, depth = 0) => {
                 if (obj && obj.name) {
@@ -1492,14 +1418,13 @@ export default function SignupPage() {
               }
               console.log('====================');
               
-              // Wait a bit to ensure all parts are loaded before showing
               setTimeout(() => {
                 setSplineLoaded(true);
               }, 500);
             }}
           />
           
-          {/* Floating Bot Dialogues - Multiple at random positions */}
+          {}
           {activeDialogues.map((dialogue) => (
             <div
               key={dialogue.id}
@@ -1518,7 +1443,7 @@ export default function SignupPage() {
           ))}
         </div>
 
-        {/* Right side - Signup Form */}
+        {}
         <div className="auth-form-panel">
           <div className="auth-form-card">
             <div className="auth-form-header">
@@ -1534,12 +1459,12 @@ export default function SignupPage() {
             <form 
               onSubmit={handleSubmit} 
               onInvalid={(e) => {
-                // Catch browser validation errors
+                
                 const target = e.target as HTMLElement;
                 if (target instanceof HTMLInputElement || target instanceof HTMLSelectElement) {
                   const fieldName = target.name || target.id || '';
                   if (fieldName) {
-                    // Map field names to our field names
+                    
                     const fieldMap: Record<string, string> = {
                       'name': 'name',
                       'email': 'email',

@@ -23,15 +23,14 @@ export async function GET(request: Request) {
       },
     };
 
-    // Test Gemini API - try multiple model names
     if (GEMINI_API_KEY) {
       results.gemini.tested = true;
       const geminiModels = [
-        'gemini-2.5-flash',           // Latest flash model (recommended)
-        'gemini-2.5-flash-lite',      // Latest lightweight model
-        'gemini-2.5-pro',             // Latest pro model
-        'gemini-1.5-flash',           // Fallback to 1.5 flash
-        'gemini-1.5-pro',             // Fallback to 1.5 pro
+        'gemini-2.5-flash',           
+        'gemini-2.5-flash-lite',      
+        'gemini-2.5-pro',             
+        'gemini-1.5-flash',           
+        'gemini-1.5-pro',             
       ];
       
       for (const model of geminiModels) {
@@ -54,29 +53,27 @@ export async function GET(request: Request) {
             if (data.candidates?.[0]?.content) {
               results.gemini.working = true;
               results.gemini.error = null;
-              results.gemini.modelUsed = model; // Track which model worked
-              break; // Success! Exit loop
+              results.gemini.modelUsed = model; 
+              break; 
             } else {
               results.gemini.error = `Model ${model}: No response content`;
             }
           } else {
             const errorText = await testResponse.text().catch(() => 'Unknown error');
             results.gemini.error = `Model ${model}: HTTP ${testResponse.status} - ${errorText.substring(0, 100)}`;
-            // Continue to try next model
+            
           }
         } catch (error: any) {
           results.gemini.error = `Model ${model}: ${error?.message || 'Network error'}`;
-          // Continue to try next model
+          
         }
       }
       
-      // If none worked, keep the last error
       if (!results.gemini.working && results.gemini.error) {
         results.gemini.error = `All models failed. Last: ${results.gemini.error}`;
       }
     }
 
-    // Test Groq API
     if (GROQ_API_KEY) {
       try {
         results.groq.tested = true;
@@ -87,7 +84,7 @@ export async function GET(request: Request) {
             'Authorization': `Bearer ${GROQ_API_KEY}`,
           },
           body: JSON.stringify({
-            model: 'llama-3.1-8b-instant', // Updated to current model (70b was decommissioned)
+            model: 'llama-3.1-8b-instant', 
             messages: [{ role: 'user', content: 'Say "Hello"' }],
             max_tokens: 10,
           }),
@@ -123,7 +120,3 @@ export async function GET(request: Request) {
     }, { status: 500 });
   }
 }
-
-
-
-

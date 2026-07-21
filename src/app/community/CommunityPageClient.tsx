@@ -38,7 +38,7 @@ export default function CommunityPageClient({ currentUserId }: CommunityPageClie
     async function loadData() {
       setLoading(true);
       try {
-        // Load posts
+        
         const data = await getPosts({
           sort,
           filter_cuisine: filterCuisine || undefined,
@@ -61,7 +61,6 @@ export default function CommunityPageClient({ currentUserId }: CommunityPageClie
     loadData();
   }, [sort, filterCuisine, filterDifficulty, filterTime, filterServings, filterDiet.join(','), filterTags.join(','), search]);
 
-  // Fetch notification count
   useEffect(() => {
     async function fetchNotificationCount() {
       try {
@@ -77,10 +76,8 @@ export default function CommunityPageClient({ currentUserId }: CommunityPageClie
 
     fetchNotificationCount();
     
-    // Poll every 5 seconds for updates
     const interval = setInterval(fetchNotificationCount, 5000);
     
-    // Refresh when page becomes visible (user returns from notifications page)
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         fetchNotificationCount();
@@ -88,7 +85,6 @@ export default function CommunityPageClient({ currentUserId }: CommunityPageClie
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
-    // Listen for notifications-read event
     const handleNotificationsRead = () => {
       fetchNotificationCount();
     };
@@ -101,7 +97,6 @@ export default function CommunityPageClient({ currentUserId }: CommunityPageClie
     };
   }, []);
 
-  // Match feed container height to filter card height
   useEffect(() => {
     const updateFeedHeight = () => {
       if (filtersColumnRef.current && feedContainerRef.current) {
@@ -113,15 +108,12 @@ export default function CommunityPageClient({ currentUserId }: CommunityPageClie
       }
     };
 
-    // Initial measurement
     if (!loading) {
-      // Wait a bit for DOM to render
+      
       const timeoutId = setTimeout(updateFeedHeight, 100);
       
-      // Update on resize
       window.addEventListener('resize', updateFeedHeight);
       
-      // Also update when loading completes
       updateFeedHeight();
 
       return () => {
@@ -310,12 +302,12 @@ export default function CommunityPageClient({ currentUserId }: CommunityPageClie
           </div>
         </div>
 
-        {/* Sidebar - Below Header in Single Row */}
+        {}
         <div style={{ marginBottom: '32px' }}>
           <CommunitySidebar />
         </div>
 
-        {/* Main Layout - Filters and Feed */}
+        {}
         <div className="community-layout-single-row">
           <div ref={filtersColumnRef} className="community-filters-column">
             <CommunityFilters
@@ -365,7 +357,7 @@ export default function CommunityPageClient({ currentUserId }: CommunityPageClie
         </div>
       </div>
 
-      {/* Messages Modal */}
+      {}
       <MessagesModal
         isOpen={showMessagesModal}
         onClose={() => setShowMessagesModal(false)}
@@ -373,4 +365,3 @@ export default function CommunityPageClient({ currentUserId }: CommunityPageClie
     </>
   );
 }
-

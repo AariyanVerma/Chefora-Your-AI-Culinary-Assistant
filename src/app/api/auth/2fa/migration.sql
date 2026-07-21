@@ -14,3 +14,4 @@ ADD COLUMN IF NOT EXISTS totp_secret TEXT;
 
 
 
+

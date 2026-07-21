@@ -13,7 +13,6 @@ export async function GET(req: Request) {
     const userId = searchParams.get('userId') || user.id;
     const username = searchParams.get('username');
 
-    // If username is provided, fetch post count for that user
     if (username) {
       const countResult = await sql<{ post_count: number }>`
         SELECT COALESCE(COUNT(*)::integer, 0) as post_count
@@ -26,7 +25,6 @@ export async function GET(req: Request) {
       return NextResponse.json({ post_count: postCount }, { status: 200 });
     }
 
-    // Otherwise, return username and avatar_url for userId
     const result = await sql<{ username: string; avatar_url: string | null }>`
       SELECT username, avatar_url
       FROM community_profiles
@@ -47,10 +45,3 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
-
-
-
-
-
-
-

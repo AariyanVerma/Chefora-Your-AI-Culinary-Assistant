@@ -13,22 +13,18 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { currentPassword, newPassword, confirmPassword } = body;
 
-    // Validate required fields
     if (!currentPassword || !newPassword || !confirmPassword) {
       return NextResponse.json({ error: 'All password fields are required' }, { status: 400 });
     }
 
-    // Check if new password matches confirmation
     if (newPassword !== confirmPassword) {
       return NextResponse.json({ error: 'New password and confirmation do not match' }, { status: 400 });
     }
 
-    // Check password length
     if (newPassword.length < 6) {
       return NextResponse.json({ error: 'New password must be at least 6 characters' }, { status: 400 });
     }
 
-    // Verify current password
     const userResult = await sql<{ password_hash: string }>`
       SELECT password_hash
       FROM users
@@ -45,10 +41,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Current password is incorrect' }, { status: 401 });
     }
 
-    // Hash new password
     const newPasswordHash = await hashPassword(newPassword);
 
-    // Update password
     await sql`
       UPDATE users
       SET 
@@ -66,7 +60,3 @@ export async function POST(req: Request) {
     );
   }
 }
-
-
-
-

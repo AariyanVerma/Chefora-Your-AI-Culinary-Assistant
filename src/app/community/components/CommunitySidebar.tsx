@@ -10,7 +10,7 @@ export default function CommunitySidebar() {
       gridTemplateColumns: 'repeat(3, 1fr)',
       gap: '20px'
     }}>
-      {/* Trending Tags */}
+      {}
       <div className="community-sidebar-card community-neon-card" style={{ 
         padding: 'var(--pad-lg)',
         borderRadius: '16px',
@@ -42,7 +42,7 @@ export default function CommunitySidebar() {
         </div>
       </div>
 
-      {/* Suggested Creators */}
+      {}
       <div className="community-sidebar-card community-neon-card" style={{ 
         padding: 'var(--pad-lg)',
         borderRadius: '16px',
@@ -70,7 +70,7 @@ export default function CommunitySidebar() {
         </div>
       </div>
 
-      {/* Weekly Challenge */}
+      {}
       <div className="community-sidebar-card community-challenge-card community-neon-card" style={{
         padding: 'var(--pad-lg)',
         borderRadius: '16px',
@@ -111,4 +111,3 @@ export default function CommunitySidebar() {
     </div>
   );
 }
-

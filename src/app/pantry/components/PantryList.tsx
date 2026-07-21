@@ -18,7 +18,6 @@ export default function PantryList({ items }: PantryListProps) {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Reset selected items when items change (e.g., when filters are applied)
   useEffect(() => {
     setSelectedItems(new Set());
   }, [items.length]);
@@ -50,7 +49,7 @@ export default function PantryList({ items }: PantryListProps) {
   };
 
   const handleUpdate = () => {
-    // Refresh the page to get updated data
+    
     window.location.reload();
   };
 
@@ -232,4 +231,3 @@ export default function PantryList({ items }: PantryListProps) {
     </div>
   );
 }
-

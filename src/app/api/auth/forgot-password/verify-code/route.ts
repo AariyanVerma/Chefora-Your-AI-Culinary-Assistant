@@ -11,7 +11,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Email and code are required' }, { status: 400 });
     }
 
-    // Find valid reset code
     const codeResult = await sql<{
       id: string;
       user_id: string;
@@ -36,20 +35,16 @@ export async function POST(req: Request) {
 
     const resetCode = codeResult.rows[0];
 
-    // Mark code as used
     await sql`
       UPDATE password_reset_codes
       SET used = TRUE
       WHERE id = ${resetCode.id}
     `;
 
-    // Create a temporary token for password reset (valid for 10 minutes)
-    // This allows the user to reset password without re-entering code
     const resetToken = crypto.randomBytes(32).toString('hex');
     const tokenExpiresAt = new Date();
     tokenExpiresAt.setMinutes(tokenExpiresAt.getMinutes() + 10);
 
-    // Store reset token (we'll use the same table but mark it differently)
     await sql`
       INSERT INTO password_reset_codes (user_id, email, code, expires_at)
       VALUES (${resetCode.user_id}, ${email.trim()}, ${resetToken}, ${tokenExpiresAt.toISOString()})
@@ -70,8 +65,3 @@ export async function POST(req: Request) {
     );
   }
 }
-
-
-
-
-

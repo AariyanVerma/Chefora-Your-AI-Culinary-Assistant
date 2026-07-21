@@ -9,10 +9,8 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Create extension if not exists
     await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp";`;
 
-    // Create pantry_items table
     await sql`
       CREATE TABLE IF NOT EXISTS pantry_items (
         id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -36,7 +34,6 @@ export async function GET() {
       );
     `;
 
-    // Add image_url column if it doesn't exist (for existing tables)
     try {
       await sql`
         DO $$ 
@@ -52,11 +49,10 @@ export async function GET() {
         END $$;
       `;
     } catch (error: any) {
-      // If error occurs, log it but continue (column might already exist)
+      
       console.log('Note: Could not add image_url column - it may already exist:', error.message);
     }
 
-    // Replace barcode column with price column (for existing tables)
     try {
       await sql`
         DO $$ 
@@ -87,11 +83,10 @@ export async function GET() {
         END $$;
       `;
     } catch (error: any) {
-      // If error occurs, log it but continue
+      
       console.log('Note: Could not migrate barcode to price column:', error.message);
     }
 
-    // Create indexes
     await sql`CREATE INDEX IF NOT EXISTS idx_pantry_items_user_id ON pantry_items(user_id);`;
     await sql`CREATE INDEX IF NOT EXISTS idx_pantry_items_name ON pantry_items(name);`;
     await sql`CREATE INDEX IF NOT EXISTS idx_pantry_items_expiry_date ON pantry_items(expiry_date);`;
@@ -100,7 +95,6 @@ export async function GET() {
     await sql`CREATE INDEX IF NOT EXISTS idx_pantry_items_user_category ON pantry_items(user_id, category);`;
     await sql`CREATE INDEX IF NOT EXISTS idx_pantry_items_user_location ON pantry_items(user_id, location);`;
 
-    // Create shopping_list_items table
     await sql`
       CREATE TABLE IF NOT EXISTS shopping_list_items (
         id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -134,4 +128,3 @@ export async function GET() {
     );
   }
 }
-

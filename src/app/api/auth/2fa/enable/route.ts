@@ -3,10 +3,6 @@ import { getCurrentUser } from '@/lib/auth';
 import { sql } from '@/lib/db';
 import { verifyToken } from '@/lib/2fa';
 
-/**
- * POST /api/auth/2fa/enable
- * Enable 2FA for the current user after verifying the setup code
- */
 export async function POST(req: Request) {
   try {
     const user = await getCurrentUser();
@@ -24,7 +20,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Verify the code
     const isValid = verifyToken(code, secret);
     if (!isValid) {
       return NextResponse.json(
@@ -33,7 +28,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Save the secret to the database
     await sql`
       UPDATE users
       SET totp_secret = ${secret}, updated_at = NOW()
@@ -52,7 +46,3 @@ export async function POST(req: Request) {
     );
   }
 }
-
-
-
-

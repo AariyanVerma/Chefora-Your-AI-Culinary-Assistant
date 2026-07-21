@@ -37,7 +37,6 @@ export default function PostDetail({ post, initialComments, currentUserId }: Pos
   const isOwner = currentUserId === post.author_id;
   const titleColor = getPostTitleColor(post.id);
 
-  // Poll for updated counts and comments every 1 second when component is visible
   React.useEffect(() => {
     let intervalId: NodeJS.Timeout;
     
@@ -76,7 +75,6 @@ export default function PostDetail({ post, initialComments, currentUserId }: Pos
       }
     };
 
-    // Only poll if page is visible
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         updateCounts();
@@ -84,13 +82,12 @@ export default function PostDetail({ post, initialComments, currentUserId }: Pos
         intervalId = setInterval(() => {
           updateCounts();
           updateComments();
-        }, 1000); // Update every 1 second
+        }, 1000); 
       } else {
         if (intervalId) clearInterval(intervalId);
       }
     };
 
-    // Initial update and start polling if visible
     if (document.visibilityState === 'visible') {
       updateCounts();
       updateComments();
@@ -109,10 +106,9 @@ export default function PostDetail({ post, initialComments, currentUserId }: Pos
   }, [post.id]);
 
   const handleLike = async () => {
-    // Mark that user just performed an action
+    
     lastActionTimeRef.current = Date.now();
     
-    // Optimistic update
     const newLikedState = !isLiked;
     setIsLiked(newLikedState);
     setLikeCount(prev => {
@@ -122,13 +118,13 @@ export default function PostDetail({ post, initialComments, currentUserId }: Pos
     
     try {
       const result = await toggleLikePost(post.id);
-      // Update with actual count from database
+      
       if (result?.like_count !== undefined) {
         setLikeCount(result.like_count);
         setIsLiked(result.is_liked);
       }
     } catch (error) {
-      // Revert on error
+      
       setIsLiked(!newLikedState);
       setLikeCount(post.like_count);
       console.error('Failed to toggle like:', error);
@@ -163,7 +159,7 @@ export default function PostDetail({ post, initialComments, currentUserId }: Pos
   };
 
   const handleShareSuccess = async () => {
-    // Refresh share count after successful share
+    
     try {
       const response = await fetch(`/api/community/post-counts?postIds=${post.id}`);
       if (response.ok) {
@@ -184,12 +180,11 @@ export default function PostDetail({ post, initialComments, currentUserId }: Pos
 
     setSubmitting(true);
     const commentContent = commentText.trim();
-    setCommentText(''); // Clear input immediately for better UX
+    setCommentText(''); 
     
     try {
       const result = await createComment({ post_id: post.id, content: commentContent });
       
-      // Fetch updated comments and counts immediately
       const [countsResponse, commentsResponse] = await Promise.all([
         fetch(`/api/community/post-counts?postIds=${post.id}`),
         fetch(`/api/community/comments?postId=${post.id}`)
@@ -212,7 +207,7 @@ export default function PostDetail({ post, initialComments, currentUserId }: Pos
     } catch (error) {
       console.error('Failed to post comment:', error);
       alert('Failed to post comment. Please try again.');
-      setCommentText(commentContent); // Restore text on error
+      setCommentText(commentContent); 
     } finally {
       setSubmitting(false);
     }
@@ -246,7 +241,6 @@ export default function PostDetail({ post, initialComments, currentUserId }: Pos
     return date.toLocaleDateString();
   };
 
-  // Close menu when clicking outside
   React.useEffect(() => {
     if (!showMenu) return;
     const handleClickOutside = (e: MouseEvent) => {
@@ -270,7 +264,7 @@ export default function PostDetail({ post, initialComments, currentUserId }: Pos
         Back
       </button>
 
-      {/* Post */}
+      {}
       <div className="community-post-detail-card community-neon-card" style={{
         marginBottom: '24px',
         padding: 'var(--pad-lg)',
@@ -279,7 +273,7 @@ export default function PostDetail({ post, initialComments, currentUserId }: Pos
         backdropFilter: 'blur(20px) saturate(150%)',
         WebkitBackdropFilter: 'blur(20px) saturate(150%)'
       }}>
-            {/* Header */}
+            {}
             <div className="community-post-header">
               <Link href={`/community/u/${post.author_username}`} className="community-post-author">
                 <div className="community-avatar">
@@ -391,7 +385,7 @@ export default function PostDetail({ post, initialComments, currentUserId }: Pos
               </div>
             </div>
 
-            {/* Image Carousel */}
+            {}
             {post.media_urls.length > 0 && (
               <div className="community-post-image-wrapper-large">
                 <ImageCarousel
@@ -404,7 +398,7 @@ export default function PostDetail({ post, initialComments, currentUserId }: Pos
               </div>
             )}
 
-            {/* Content */}
+            {}
             <div className="community-post-content">
               <h1 className="cardTitle" style={{ marginBottom: '12px', fontSize: 'var(--fs-xl)', color: titleColor }}>
                 {post.title}
@@ -415,7 +409,7 @@ export default function PostDetail({ post, initialComments, currentUserId }: Pos
                 </p>
               )}
 
-              {/* Recipe Tags */}
+              {}
               {post.recipe && (
                 <div className="chip-row" style={{ marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
                   {post.recipe.difficulty && (
@@ -445,7 +439,7 @@ export default function PostDetail({ post, initialComments, currentUserId }: Pos
                 </div>
               )}
 
-              {/* Recipe Details */}
+              {}
               {post.recipe && (
                 <div className="community-recipe-details">
                   {post.recipe.ingredients && post.recipe.ingredients.length > 0 && (
@@ -481,7 +475,7 @@ export default function PostDetail({ post, initialComments, currentUserId }: Pos
               )}
             </div>
 
-            {/* Actions */}
+            {}
             <div className="community-post-actions" style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
               <button
                 onClick={handleLike}
@@ -530,7 +524,7 @@ export default function PostDetail({ post, initialComments, currentUserId }: Pos
         onShareSuccess={handleShareSuccess}
       />
 
-      {/* Comments Section */}
+      {}
       <div className="community-comments-section community-neon-card" style={{ 
         marginTop: '24px',
         padding: 'var(--pad-lg)',
@@ -548,7 +542,7 @@ export default function PostDetail({ post, initialComments, currentUserId }: Pos
           Comments ({comments.length})
         </h2>
 
-        {/* Comment Form */}
+        {}
         <form onSubmit={handleSubmitComment} className="community-comment-form">
           <textarea
             value={commentText}
@@ -567,7 +561,7 @@ export default function PostDetail({ post, initialComments, currentUserId }: Pos
           </button>
         </form>
 
-        {/* Comments List */}
+        {}
         <div className="community-comments-list" style={{ marginTop: '24px' }}>
           {comments.length === 0 ? (
             <p className="subtitle" style={{ color: 'var(--muted)', textAlign: 'center', padding: '24px' }}>
@@ -583,7 +577,6 @@ export default function PostDetail({ post, initialComments, currentUserId }: Pos
                   try {
                     const result = await deleteComment(comment.id);
                     
-                    // Fetch updated comments and counts immediately
                     const [countsResponse, commentsResponse] = await Promise.all([
                       fetch(`/api/community/post-counts?postIds=${post.id}`),
                       fetch(`/api/community/comments?postId=${post.id}`)
@@ -616,4 +609,3 @@ export default function PostDetail({ post, initialComments, currentUserId }: Pos
     </div>
   );
 }
-

@@ -34,7 +34,6 @@ export default function NotificationsPageClient() {
           const data = await res.json();
           setNotifications(data.notifications || []);
           
-          // Mark all notifications as read when page is visited
           if (data.notifications && data.notifications.length > 0) {
             const unreadIds = data.notifications
               .filter((n: Notification) => !n.read)
@@ -47,10 +46,8 @@ export default function NotificationsPageClient() {
                 body: JSON.stringify({ notificationIds: unreadIds }),
               });
               
-              // Update local state to mark as read
               setNotifications(prev => prev.map(n => ({ ...n, read: true })));
               
-              // Trigger a custom event to notify other components
               window.dispatchEvent(new CustomEvent('notifications-read'));
             }
           }
@@ -178,7 +175,7 @@ export default function NotificationsPageClient() {
           </div>
         ) : (
           notifications.map(notification => {
-            // Determine what to show based on notification type
+            
             const isLike = notification.type === 'like';
             const isComment = notification.type === 'comment';
             const isFriendRequest = notification.type === 'friend_request' || notification.type === 'friend_accepted';
@@ -209,7 +206,7 @@ export default function NotificationsPageClient() {
                 }}
                 >
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                    {/* For likes: show post image, for friend/follow: show avatar, for others: show icon */}
+                    {}
                     {isLike && notification.post_image_url ? (
                       <div style={{
                         width: '60px',
@@ -275,9 +272,9 @@ export default function NotificationsPageClient() {
                       </div>
                     )}
 
-                    {/* Main Content */}
+                    {}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      {/* User info and action text */}
+                      {}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: isComment && notification.comment_content ? '8px' : '4px', flexWrap: 'wrap' }}>
                         <p className="subtitle" style={{ margin: 0, color: 'var(--text)' }}>
                           <strong style={{ color: '#67e8f9' }}>{notification.actor_display_name}</strong>{' '}
@@ -285,7 +282,7 @@ export default function NotificationsPageClient() {
                         </p>
                       </div>
 
-                      {/* Comment text */}
+                      {}
                       {isComment && notification.comment_content && (
                         <div style={{
                           padding: '8px 12px',
@@ -306,7 +303,7 @@ export default function NotificationsPageClient() {
                         </div>
                       )}
 
-                      {/* Post image - for comments only (likes already show it on the left) */}
+                      {}
                       {isComment && notification.post_image_url && (
                         <div style={{
                           width: '100%',
@@ -330,7 +327,7 @@ export default function NotificationsPageClient() {
                         </div>
                       )}
 
-                      {/* Time ago */}
+                      {}
                       <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '8px' }}>
                         {formatTimeAgo(notification.created_at)}
                       </div>
@@ -345,4 +342,3 @@ export default function NotificationsPageClient() {
     </div>
   );
 }
-

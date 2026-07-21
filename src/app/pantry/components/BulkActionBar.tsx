@@ -153,4 +153,3 @@ export default function BulkActionBar({ selectedIds, onActionComplete }: BulkAct
     </div>
   );
 }
-

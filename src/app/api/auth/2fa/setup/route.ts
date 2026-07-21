@@ -3,10 +3,6 @@ import { getCurrentUser } from '@/lib/auth';
 import { sql } from '@/lib/db';
 import { generateSecret, generateQRCode } from '@/lib/2fa';
 
-/**
- * GET /api/auth/2fa/setup
- * Generate a new 2FA secret and QR code for the current user
- */
 export async function GET() {
   try {
     const user = await getCurrentUser();
@@ -14,19 +10,15 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Generate new secret
     const { secret, otpauthUrl } = generateSecret(user.email);
 
-    // Generate QR code
     const qrCodeDataURL = await generateQRCode(otpauthUrl);
 
-    // IMPORTANT: Don't save the secret yet - user must verify first
-    // Return the secret and QR code so user can scan it
     return NextResponse.json({
       ok: true,
-      secret, // For manual entry backup
+      secret, 
       qrCode: qrCodeDataURL,
-      manualEntryKey: secret, // Base32 encoded secret for manual entry
+      manualEntryKey: secret, 
     });
   } catch (err: any) {
     console.error('2FA setup error:', err);
@@ -36,7 +28,3 @@ export async function GET() {
     );
   }
 }
-
-
-
-

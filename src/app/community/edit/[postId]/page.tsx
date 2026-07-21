@@ -20,7 +20,6 @@ export default async function EditPostPage({
     notFound();
   }
 
-  // Verify ownership
   if (post.author_id !== user.id) {
     redirect(`/community/p/${resolvedParams.postId}`);
   }

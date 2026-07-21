@@ -12,12 +12,10 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { name, email, country, timeZone, cookFrequency } = body;
 
-    // Validate required fields
     if (!name || !email) {
       return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
     }
 
-    // Check if email is already taken by another user
     if (email !== user.email) {
       const existing = await sql`SELECT id FROM users WHERE email = ${email} AND id != ${user.id} LIMIT 1`;
       if (existing.rows[0]) {
@@ -25,7 +23,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // Update user info
     await sql`
       UPDATE users
       SET 
@@ -47,7 +44,3 @@ export async function POST(req: Request) {
     );
   }
 }
-
-
-
-

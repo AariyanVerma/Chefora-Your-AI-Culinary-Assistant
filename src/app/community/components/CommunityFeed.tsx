@@ -34,7 +34,6 @@ export default function CommunityFeed({ initialPosts = [], currentUserId }: Comm
     }
   };
 
-  // Handle post deletion - remove from state
   const handlePostDelete = (postId: string) => {
     setPosts(prevPosts => prevPosts.filter(p => p.id !== postId));
   };
@@ -92,4 +91,3 @@ export default function CommunityFeed({ initialPosts = [], currentUserId }: Comm
     </div>
   );
 }
-

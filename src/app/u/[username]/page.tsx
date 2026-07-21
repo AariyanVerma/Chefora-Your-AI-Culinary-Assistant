@@ -29,11 +29,11 @@ export default async function UserProfilePage({
   let posts: any[] = [];
 
   if (tab === 'posts') {
-    // Get user's posts
+    
     const allPosts = await getPosts({ page: 1, limit: 50 });
     posts = allPosts.filter(p => p.author_username === username);
   } else if (tab === 'saved') {
-    // Only show saved posts if viewing your own profile
+    
     if (profile.user_id === user.id) {
       posts = await getSavedPosts(profile.user_id, user.id);
     }
@@ -45,4 +45,3 @@ export default async function UserProfilePage({
     </DashboardLayout>
   );
 }
-

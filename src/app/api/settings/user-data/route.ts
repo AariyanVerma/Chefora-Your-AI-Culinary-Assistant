@@ -9,7 +9,6 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Fetch user data
     const userResult = await sql<{
       id: string;
       name: string;
@@ -29,7 +28,6 @@ export async function GET() {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Fetch user profile
     const profileResult = await sql<{
       dietary_profile: string | null;
       allergies: string[] | null;
@@ -58,7 +56,3 @@ export async function GET() {
     );
   }
 }
-
-
-
-

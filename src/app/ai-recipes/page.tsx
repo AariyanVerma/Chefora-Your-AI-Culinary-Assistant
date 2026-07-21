@@ -11,12 +11,6 @@ import CuisineAutocomplete from "@/components/CuisineAutocomplete";
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
 
-// ──────────────────────────────────────
-// Image helpers (for AI recipes/ideas)
-// ──────────────────────────────────────
-
-// We now ONLY use image URLs provided by the backend.
-// No more Unsplash / external fallbacks here.
 const resolveRecipeImage = (raw?: string | null): string | null => {
   if (!raw) return null;
   const trimmed = raw.trim();
@@ -24,9 +18,6 @@ const resolveRecipeImage = (raw?: string | null): string | null => {
   return trimmed;
 };
 
-// ──────────────────────────────────────
-// Types
-// ──────────────────────────────────────
 type AiRecipe = {
   recipeId: string;
   title: string;
@@ -60,7 +51,6 @@ type StrictMatch = {
   ingredientsMissing: string[];
   sourceUrl?: string;
 
-  // extra fields used when the first match is the Groq main recipe
   steps?: string[];
   tips?: string[];
   servings?: number | null;
@@ -82,9 +72,6 @@ type AiIdea = {
 
 type DrawerMode = "aiMatch" | "aiIdea" | "search" | null;
 
-// ──────────────────────────────────────
-// Hooks
-// ──────────────────────────────────────
 function useMedia(query: string) {
   const [matches, setMatches] = useState(false);
 
@@ -100,15 +87,11 @@ function useMedia(query: string) {
   return matches;
 }
 
-// ──────────────────────────────────────
-// Page
-// ──────────────────────────────────────
 export default function Page() {
   const isCompact = useMedia("(max-width: 560px)");
   const pathname = usePathname();
   const [tab, setTab] = useState<"browse" | "search" | "special">("browse");
 
-  // AI form state
   const [aiIngredients, setAiIngredients] = useState<string[]>([]);
   const [aiDiet, setAiDiet] = useState("");
   const [aiCuisine, setAiCuisine] = useState("");
@@ -123,11 +106,9 @@ export default function Page() {
   const [aiHasRun, setAiHasRun] = useState(false);
   const [showAiAdvanced, setShowAiAdvanced] = useState(false);
 
-  // Drawer state
   const [selectedMatch, setSelectedMatch] = useState<StrictMatch | null>(null);
   const [selectedIdea, setSelectedIdea] = useState<AiIdea | null>(null);
 
-  // Search state
   const [searchTerm, setSearchTerm] = useState("");
   const [dietFilter, setDietFilter] = useState("");
   const [maxTimeFilter, setMaxTimeFilter] = useState<number | "">("");
@@ -139,26 +120,23 @@ export default function Page() {
   const [checkedIngredients, setCheckedIngredients] =
     useState<Record<string, boolean>>({});
 
-  // 🔹 Ref + order state for packed ingredients
   const ingredientListRef = useRef<HTMLUListElement | null>(null);
   const [ingredientOrders, setIngredientOrders] = useState<number[]>([]);
 
   useEffect(() => {
-    // reset checklist whenever we open a different recipe in the drawer
+    
     if (drawerMode === "search" && selectedRecipe?.recipeId) {
       setCheckedIngredients({});
     }
   }, [drawerMode, selectedRecipe?.recipeId]);
 
   useEffect(() => {
-  // reset checklist when we open a different AI crafted match
+  
   if (drawerMode === "aiMatch" && selectedMatch) {
     setCheckedIngredients({});
   }
 }, [drawerMode, selectedMatch]);
 
-
-  // 🔹 Auto-pack ingredient pills so they fill rows nicely
   useEffect(() => {
     function packIngredients() {
       const container = ingredientListRef.current;
@@ -173,7 +151,7 @@ export default function Page() {
       const totalWidth = container.offsetWidth;
       if (!totalWidth) return;
 
-      const gap = 12; // approximate horizontal gap in px
+      const gap = 12; 
 
       const widths = items.map((el) => el.offsetWidth + gap);
 
@@ -201,7 +179,6 @@ export default function Page() {
     return () => window.removeEventListener("resize", packIngredients);
   }, [drawerMode, selectedRecipe?.recipeId, selectedRecipe?.ingredients?.length]);
 
-  // Global effects (same behaviour as before)
   useEffect(() => {
     const root = document.documentElement;
     const onScroll = () => {
@@ -232,9 +209,6 @@ export default function Page() {
     return () => window.removeEventListener("resize", setVH);
   }, []);
 
-  // ──────────────────────────────────────
-  // Search (Spoonacular) via React Query
-  // ──────────────────────────────────────
   const {
     data: searchData,
     isFetching: searchLoading,
@@ -244,7 +218,7 @@ export default function Page() {
     enabled: false,
     queryFn: async () => {
       const params = new URLSearchParams();
-      // 🔧 send "query" instead of "q"
+      
       if (searchTerm) params.set("query", searchTerm);
       if (dietFilter) params.set("diet", dietFilter);
       if (maxTimeFilter) params.set("maxTimeMinutes", String(maxTimeFilter));
@@ -294,9 +268,6 @@ export default function Page() {
     }
   }
 
-  // ──────────────────────────────────────
-  // AI Suggest – main button handler
-  // ──────────────────────────────────────
   async function handleAiSuggest() {
     setAiError(null);
     setAiHasRun(true);
@@ -306,7 +277,6 @@ export default function Page() {
     setAiStrictMatches([]);
     setAiIdeasList([]);
 
-    // If user hasn’t typed anything at all, gently complain
     if (
       aiIngredients.length === 0 &&
       !aiDiet &&
@@ -347,7 +317,7 @@ export default function Page() {
           const json = JSON.parse(text);
           if (json?.error) message = json.error;
         } catch {
-          // ignore
+          
         }
         throw new Error(message);
       }
@@ -358,7 +328,6 @@ export default function Page() {
       };
       console.log("[AI] result:", j);
 
-      // Strict matches
       const matches: StrictMatch[] = (j.searchMatches || []).map((m: any) => ({
         id: String(m.id ?? ""),
         title: m.title ?? "Untitled recipe",
@@ -390,7 +359,6 @@ export default function Page() {
         description: m.description ?? "",
       }));
 
-      // AI ideas
       const ideas: AiIdea[] = (j.aiIdeas || []).map((idea: any) => ({
         title: idea.title ?? "Untitled idea",
         description: idea.description ?? "",
@@ -454,15 +422,12 @@ export default function Page() {
   const suggestionMatches =
     aiStrictMatches.length > 1 ? aiStrictMatches.slice(1) : [];
 
-  // ──────────────────────────────────────
-  // Render
-  // ──────────────────────────────────────
   return (
     <>
-      {/* Background */}
+      {}
       <div className="bg-base" aria-hidden />
       <div className="bg-anim" aria-hidden>
-        {/* bubbles unchanged */}
+        {}
         <span
           className="bubble b-pink"
           style={
@@ -531,7 +496,7 @@ export default function Page() {
         />
       </div>
 
-      {/* Header (same as before) */}
+      {}
       <header
         className="glass ios solid header header-anim layer-content"
         role="banner"
@@ -740,9 +705,9 @@ export default function Page() {
         )}
       </header>
 
-      {/* Main content */}
+      {}
       <main className="container layer-content ai-page-main">
-        {/* AI Suggest Section */}
+        {}
         <section className="glass ios solid hero ai-hero">
           <div className="ai-section-header">
             <div className="sectionTitle ai-section-title">
@@ -751,7 +716,7 @@ export default function Page() {
           </div>
 
           <div className="ai-ai-form ai-form-layout">
-            {/* Ingredients */}
+            {}
             <div className="ai-form-section">
               <label className="ai-field-label">Ingredients</label>
               <p className="ai-helper-text">
@@ -764,7 +729,7 @@ export default function Page() {
               />
             </div>
 
-            {/* Preferences */}
+            {}
             <div className="ai-form-section">
               <div className="ai-form-section-heading">
                 <span className="ai-field-label">Preferences (optional)</span>
@@ -784,7 +749,7 @@ export default function Page() {
               </div>
             </div>
 
-            {/* Advanced toggle */}
+            {}
             <div className="ai-form-advanced-row">
               <button
                 type="button"
@@ -797,7 +762,7 @@ export default function Page() {
               </button>
             </div>
 
-            {/* Constraints + mood */}
+            {}
             {showAiAdvanced && (
               <div className="ai-form-section ai-form-section--compact">
                 <div className="ai-form-grid">
@@ -849,7 +814,7 @@ export default function Page() {
               </div>
             )}
 
-            {/* Actions */}
+            {}
             <div className="ai-form-actions">
               <button
                 className="btn ghost tap-ripple"
@@ -883,7 +848,7 @@ export default function Page() {
               </button>
             </div>
 
-            {/* Status / error */}
+            {}
             {aiLoading && (
               <div className="subtitle ai-status-text">
                 Searching for recipes that match your constraints…
@@ -893,7 +858,7 @@ export default function Page() {
               <div className="subtitle ai-error-text">{aiError}</div>
             )}
 
-            {/* Strict matches results */}
+            {}
             {aiHasRun &&
               !aiLoading &&
               !aiError &&
@@ -903,7 +868,7 @@ export default function Page() {
                     <div className="sectionTitle">Strict matches</div>
                   </div>
 
-                  {/* TOP MATCH */}
+                  {}
                   {mainMatch && (
                     <div className="ai-main-match-card">
                       <div
@@ -959,7 +924,7 @@ export default function Page() {
                     </div>
                   )}
 
-                  {/* OTHER STRONG MATCHES */}
+                  {}
                   {suggestionMatches.length > 0 && (
                     <div style={{ marginTop: 20 }}>
                       <div
@@ -1036,7 +1001,7 @@ export default function Page() {
           </div>
         </section>
 
-        {/* Search Section – Spoonacular */}
+        {}
         <section className="ai-search-section">
           <div className="ai-section-header">
             <div className="sectionTitle">Search Recipes (Spoonacular)</div>
@@ -1044,7 +1009,7 @@ export default function Page() {
 
           <div className="glass ios solid hero ai-search-hero">
             <div className="ai-search-form">
-              {/* Main search field */}
+              {}
               <div className="ai-form-section">
                 <label className="ai-field-label">Search</label>
                 <p className="ai-helper-text">
@@ -1066,7 +1031,7 @@ export default function Page() {
                 </div>
               </div>
 
-              {/* Search actions + filters toggle */}
+              {}
               <div className="ai-search-actions-row">
                 <button
                   className="btn tap-ripple"
@@ -1087,7 +1052,7 @@ export default function Page() {
                 </button>
               </div>
 
-              {/* Advanced filters */}
+              {}
               {showSearchAdvanced && (
                 <div className="ai-form-section ai-form-section--compact ai-search-filters">
                   <div className="ai-form-grid">
@@ -1180,30 +1145,30 @@ export default function Page() {
         </section>
       </main>
 
-      {/* Drawer – shared for AI & search */}
+      {}
       <Drawer open={isDrawerOpen} onClose={() => setDrawerMode(null)}>
 
-  {/* AI Match Drawer */}
+  {}
 {drawerMode === "aiMatch" && selectedMatch && (
   <div
     className="glass surface hero ai-result-layout"
     style={{
       display: "flex",
       flexDirection: "column",
-      width: "100%",      // NEW
-      maxWidth: 960,      // NEW
-      margin: "0 auto",   // NEW – center horizontally
-      padding: 24,        // NEW – same inner padding
-      flex: 1,            // NEW – fill drawer vertically
-      minHeight: "100%",  // NEW – full height of drawer body
-      boxSizing: "border-box", // NEW
-      gap: 24,            // keep your gap
+      width: "100%",      
+      maxWidth: 960,      
+      margin: "0 auto",   
+      padding: 24,        
+      flex: 1,            
+      minHeight: "100%",  
+      boxSizing: "border-box", 
+      gap: 24,            
     }}
   >
-      {/* LEFT CONTENT */}
+      {}
       <div className="ai-result-left" style={{ flex: "3 1 0", minWidth: 0 }}>
         
-        {/* Title + Subtitle */}
+        {}
         <div style={{ marginBottom: 12 }}>
           <p
             style={{
@@ -1220,7 +1185,7 @@ export default function Page() {
           </h2>
         </div>
 
-        {/* HERO IMAGE */}
+        {}
         {selectedMatch.imageUrl && (
           <div
             style={{
@@ -1256,7 +1221,7 @@ export default function Page() {
           </div>
         )}
 
-        {/* Uses your ingredients */}
+        {}
         {Array.isArray(selectedMatch.ingredientsUsed) &&
           selectedMatch.ingredientsUsed.length > 0 && (
             <section style={{ marginBottom: 14 }}>
@@ -1287,7 +1252,7 @@ export default function Page() {
             </section>
           )}
 
-        {/* Missing ingredients */}
+        {}
 {selectedMatch.ingredientsMissing.length > 0 && (
   <section style={{ marginBottom: 14 }}>
     <h3 className="ai-result-subtitle">You may need to buy</h3>
@@ -1331,9 +1296,7 @@ export default function Page() {
   </section>
 )}
 
-
-
-        {/* Description */}
+        {}
         {selectedMatch.description && (
           <p
             className="ai-result-summary"
@@ -1349,7 +1312,7 @@ export default function Page() {
           </p>
         )}
 
-        {/* Steps */}
+        {}
         {selectedMatch.steps && selectedMatch.steps.length > 0 && (
           <section style={{ marginTop: 8 }}>
             <h3 className="ai-result-subtitle">Step-by-step instructions</h3>
@@ -1398,7 +1361,7 @@ export default function Page() {
           </section>
         )}
 
-        {/* Tips */}
+        {}
         {selectedMatch.tips && selectedMatch.tips.length > 0 && (
           <section style={{ marginTop: 14 }}>
             <h3 className="ai-result-subtitle">Tips &amp; tricks</h3>
@@ -1434,10 +1397,7 @@ export default function Page() {
     </div>
   )}
 
-
-
-
-        {/* AI idea details */}
+        {}
         {drawerMode === "aiIdea" && selectedIdea && (
           <div
             className="glass surface hero ai-result-layout"
@@ -1509,7 +1469,7 @@ export default function Page() {
           </div>
         )}
 
-        {/* Search result details (Spoonacular) – single column full width */}
+        {}
         {drawerMode === "search" && (
           <>
             {detailsLoading && !selectedRecipe && <SkeletonCard />}
@@ -1524,12 +1484,12 @@ export default function Page() {
                   maxWidth: 960,
                   margin: "0 auto",
                   padding: 24,
-                  flex: 1, // <-- stretch inside wrapper
-                  minHeight: "100%", // <-- fill full height of drawer body
+                  flex: 1, 
+                  minHeight: "100%", 
                   boxSizing: "border-box",
                 }}
               >
-                {/* Label */}
+                {}
                 <p
                   style={{
                     fontSize: 11,
@@ -1542,7 +1502,7 @@ export default function Page() {
                   Spoonacular match
                 </p>
 
-                {/* Title */}
+                {}
                 <h2
                   className="ai-result-title"
                   style={{ marginBottom: 16, lineHeight: 1.2 }}
@@ -1550,7 +1510,7 @@ export default function Page() {
                   {selectedRecipe.title}
                 </h2>
 
-                {/* Hero image full width */}
+                {}
                 {selectedRecipe.imageUrl && (
                   <div
                     style={{
@@ -1591,7 +1551,7 @@ export default function Page() {
                   </div>
                 )}
 
-                {/* Meta row as pills */}
+                {}
                 <div
                   style={{
                     display: "flex",
@@ -1647,7 +1607,7 @@ export default function Page() {
                   </span>
                 </div>
 
-                {/* Ingredients */}
+                {}
                 {Array.isArray(selectedRecipe.ingredients) &&
                   selectedRecipe.ingredients.length > 0 && (
                     <section style={{ marginBottom: 24 }}>
@@ -1698,7 +1658,7 @@ export default function Page() {
                     </section>
                   )}
 
-                {/* Instructions */}
+                {}
                 {selectedRecipe.steps && selectedRecipe.steps.length > 0 && (
                   <section>
                     <h3 className="ai-result-subtitle">Instructions</h3>
@@ -1761,9 +1721,6 @@ export default function Page() {
   );
 }
 
-// ──────────────────────────────────────
-// Skeleton helpers
-// ──────────────────────────────────────
 function SkeletonGrid() {
   return (
     <div className="grid">
@@ -1785,9 +1742,6 @@ function SkeletonCard() {
   );
 }
 
-// ──────────────────────────────────────
-// Drawer
-// ──────────────────────────────────────
 function Drawer({
   open,
   onClose,
@@ -1811,15 +1765,15 @@ function Drawer({
           left: "50%",
           transform: "translate(-50%, -50%)",
           width: "min(960px, 92vw)",
-          height: "95vh", // drawer = 95% of screen
+          height: "95vh", 
           maxHeight: "95vh",
           borderRadius: 28,
           display: "flex",
           flexDirection: "column",
-          overflow: "hidden", // clip bubbles to the card
+          overflow: "hidden", 
         }}
       >
-        {/* Drawer background – same idea as bg-base + bg-anim */}
+        {}
         <div className="drawer-bg-base" aria-hidden />
         <div className="drawer-bg-anim" aria-hidden>
           <span
@@ -1890,7 +1844,7 @@ function Drawer({
           />
         </div>
 
-        {/* Close button + body sit above the bubbles */}
+        {}
         <button
           onClick={onClose}
           aria-label="Close"
@@ -1918,4 +1872,3 @@ function Drawer({
     </div>
   );
 }
-

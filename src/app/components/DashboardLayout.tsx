@@ -28,7 +28,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           const data = await res.json();
           setUser(data.user);
           
-          // Fetch username and avatar from community profile
           if (data.user?.id) {
             try {
               const profileRes = await fetch(`/api/community/profile?userId=${data.user.id}`);
@@ -51,7 +50,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     fetchUser();
   }, [router]);
 
-  // Fetch notification count
   useEffect(() => {
     async function fetchNotificationCount() {
       try {
@@ -68,10 +66,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     if (user) {
       fetchNotificationCount();
       
-      // Poll every 5 seconds for updates
       const interval = setInterval(fetchNotificationCount, 5000);
       
-      // Refresh when page becomes visible (user returns from notifications page)
       const handleVisibilityChange = () => {
         if (document.visibilityState === 'visible') {
           fetchNotificationCount();
@@ -79,7 +75,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       };
       document.addEventListener('visibilitychange', handleVisibilityChange);
       
-      // Listen for notifications-read event
       const handleNotificationsRead = () => {
         fetchNotificationCount();
       };
@@ -95,7 +90,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <>
-      {/* Background system matching main app */}
+      {}
       <div className="bg-base" aria-hidden />
       <div className="bg-anim" aria-hidden>
         <span
@@ -132,7 +127,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         />
       </div>
 
-      {/* Sidebar - Outside scrollable container */}
+      {}
       <aside 
         className={`dashboard-sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}
         onWheel={(e) => {
@@ -223,7 +218,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </nav>
       </aside>
 
-      {/* Sidebar Overlay */}
+      {}
       {sidebarOpen && (
         <div 
           className="dashboard-sidebar-overlay" 
@@ -231,7 +226,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         />
       )}
 
-      {/* Hamburger Menu Button */}
+      {}
       <button 
         className="dashboard-sidebar-toggle"
         onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -243,11 +238,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       </button>
 
       <div className="dashboard-layout layer-content">
-        {/* Main Content */}
+        {}
         <main className="dashboard-main">
-          {/* Top Header */}
+          {}
           <header className="dashboard-top-header">
-            {/* Logo - Centered in header */}
+            {}
             <div className="dashboard-logo-center-screen">
               <Link href="/dashboard">
                 <Image
@@ -362,11 +357,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
           </header>
 
-          {/* Page Content */}
+          {}
           {children}
         </main>
       </div>
     </>
   );
 }
-

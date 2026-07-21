@@ -59,7 +59,7 @@ export default function OnboardingPage() {
           Tell Chefora about you
         </h1>
 
-        {/* STEP 1 */}
+        {}
         {step === 1 && (
           <div className="space-y-4">
             <p className="text-sm text-white/70">
@@ -108,7 +108,7 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* STEP 2 */}
+        {}
         {step === 2 && (
           <div className="space-y-4">
             <p className="text-sm text-white/70">
@@ -157,7 +157,7 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* STEP 3 */}
+        {}
         {step === 3 && (
           <div className="space-y-4">
             <p className="text-sm text-white/70">What cuisines do you love?</p>
@@ -201,7 +201,7 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* STEP 4 */}
+        {}
         {step === 4 && (
           <div className="space-y-4">
             <p className="text-sm text-white/70">
@@ -230,7 +230,7 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* NAV BUTTONS */}
+        {}
         <div className="mt-8 flex justify-between items-center">
           <button
             type="button"

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sql } from '@vercel/postgres';
+import { sql } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
@@ -21,7 +21,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ counts: {} });
     }
 
-    // Get actual counts from tables (not cached counts) to ensure accuracy
     const result = await sql`
       SELECT 
         p.id,

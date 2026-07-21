@@ -35,7 +35,6 @@ export default function ChatPage() {
   const isMountedRef = useRef(true);
   const isFetchingRef = useRef(false);
 
-  // Fetch current user info
   useEffect(() => {
     Promise.all([
       fetch('/api/auth/me').then(res => res.json()),
@@ -49,7 +48,6 @@ export default function ChatPage() {
     });
   }, []);
 
-  // Fetch messages
   const fetchMessages = async () => {
     if (!conversationId || !isMountedRef.current || isFetchingRef.current) return;
     
@@ -70,7 +68,7 @@ export default function ChatPage() {
             console.error('Failed to fetch messages:', res.status, errorData);
           }
         } catch {
-          // Ignore JSON parse errors
+          
         }
         return;
       }
@@ -78,7 +76,7 @@ export default function ChatPage() {
       const data = await res.json().catch(() => null);
       if (!data || !data.messages) return;
       
-      const serverMessages = data.messages || [];
+      const serverMessages: Message[] = data.messages || [];
       
       setMessages(prev => {
         const optimisticMessages = prev.filter(m => 
@@ -110,7 +108,7 @@ export default function ChatPage() {
         return combined.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
       });
     } catch (err) {
-      // Silently handle network errors (browser extensions, etc.)
+      
       if (err instanceof Error && err.message.includes('fetch')) {
         return;
       }
@@ -124,7 +122,7 @@ export default function ChatPage() {
     if (!conversationId) return;
     
     fetchMessages();
-    // Poll every 2 seconds - more reasonable for real-time updates
+    
     const interval = setInterval(fetchMessages, 2000);
     
     return () => {
@@ -133,7 +131,6 @@ export default function ChatPage() {
     };
   }, [conversationId]);
 
-  // Auto-scroll logic
   const checkIfNearBottom = () => {
     const container = messagesContainerRef.current;
     if (!container) return false;
@@ -207,7 +204,6 @@ export default function ChatPage() {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     });
 
-    // Send to server
     try {
       console.log('[Client] Sending message:', { conversationId, contentLength: messageContent.length });
       const res = await fetch('/api/messages/messages', {
@@ -232,7 +228,7 @@ export default function ChatPage() {
       console.log('[Client] Success response:', responseData);
       if (responseData.messageId || responseData.success) {
         pendingMessagesRef.current.delete(tempId);
-        // Trigger immediate fetch after sending, but only if not already fetching
+        
         setTimeout(() => {
           if (!isFetchingRef.current) {
             fetchMessages();
@@ -426,4 +422,3 @@ export default function ChatPage() {
     </DashboardLayout>
   );
 }
-

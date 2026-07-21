@@ -23,7 +23,7 @@ export default function BulkActionBar({ selectedIds, listId, onActionComplete }:
     try {
       if (action === 'move_to_list') {
         if (!value) {
-          // Load lists for move modal
+          
           const lists = await getShoppingLists();
           setAvailableLists(lists.filter(l => l.id !== listId));
           setShowMoveModal(true);
@@ -110,7 +110,7 @@ export default function BulkActionBar({ selectedIds, listId, onActionComplete }:
 
       {showMoveModal && typeof window !== 'undefined' && createPortal(
         <>
-          {/* Backdrop */}
+          {}
           <div 
             style={{
               position: 'fixed',
@@ -124,7 +124,7 @@ export default function BulkActionBar({ selectedIds, listId, onActionComplete }:
             }}
             onClick={() => setShowMoveModal(false)}
           />
-          {/* Modal */}
+          {}
           <div className="shopping-modal" onClick={(e) => e.stopPropagation()}>
             <h3>Move Items to List</h3>
             <select
@@ -161,6 +161,3 @@ export default function BulkActionBar({ selectedIds, listId, onActionComplete }:
     </>
   );
 }
-
-
-

@@ -7,7 +7,7 @@ import dynamic from 'next/dynamic';
 
 const Spline = dynamic(() => import('@splinetool/react-spline').then((mod) => mod.default), {
   ssr: false,
-  loading: () => null, // Don't show loading component, show Spline immediately
+  loading: () => null, 
 });
 
 export default function ForgotPasswordPage() {
@@ -43,7 +43,7 @@ export default function ForgotPasswordPage() {
       if (response.ok) {
         setMessage(data.message || 'If an account with that email exists, a reset code has been sent to your email.');
         setStep('verify');
-        // Code is only logged in server console for development, never displayed in UI
+        
       } else {
         setError(data.error || 'Failed to send reset code');
       }
@@ -130,7 +130,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="auth-page-container">
-      {/* Animated background */}
+      {}
       <div className="auth-bg-animated">
         <div className="gradient-orb orb-1"></div>
         <div className="gradient-orb orb-2"></div>
@@ -138,7 +138,7 @@ export default function ForgotPasswordPage() {
       </div>
 
       <div className="auth-layout">
-        {/* Left side - 3D Spline Scene */}
+        {}
         <div 
           className={`auth-3d-panel ${splineLoaded ? 'spline-loaded' : 'spline-loading'}`} 
           ref={splineRef}
@@ -153,7 +153,7 @@ export default function ForgotPasswordPage() {
           />
         </div>
 
-        {/* Right side - Forgot Password Form */}
+        {}
         <div className="auth-form-panel">
           <div className="auth-form-card">
             <div className="auth-form-header">
@@ -206,7 +206,7 @@ export default function ForgotPasswordPage() {
               </div>
             )}
 
-            {/* Step 1: Enter Email */}
+            {}
             {step === 'email' && (
               <form onSubmit={handleSendCode} className="auth-form">
                 <div className="auth-field">
@@ -241,7 +241,7 @@ export default function ForgotPasswordPage() {
               </form>
             )}
 
-            {/* Step 2: Verify Code */}
+            {}
             {step === 'verify' && (
               <form onSubmit={handleVerifyCode} className="auth-form">
                 <div className="auth-field">
@@ -308,7 +308,7 @@ export default function ForgotPasswordPage() {
               </form>
             )}
 
-            {/* Step 3: Reset Password */}
+            {}
             {step === 'reset' && (
               <form onSubmit={handleResetPassword} className="auth-form">
                 <div className="auth-field">
@@ -369,7 +369,3 @@ export default function ForgotPasswordPage() {
     </div>
   );
 }
-
-
-
-

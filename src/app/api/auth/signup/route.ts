@@ -1,4 +1,4 @@
-// src/app/api/auth/signup/route.ts
+
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { hashPassword, createSessionToken, SESSION_COOKIE } from '@/lib/auth';
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 60 * 60 * 24 * 7, 
     });
 
     return res;

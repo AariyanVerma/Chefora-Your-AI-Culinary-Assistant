@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
+  let existingIngredients: unknown[] | undefined;
+  let existingSteps: string[] | undefined;
+
   try {
     const body = await request.json();
-    const { recipeTitle, description, existingIngredients, existingSteps, servings, difficulty, cuisine, diet } = body;
+    const { recipeTitle, description, servings, difficulty, cuisine, diet } = body;
+    existingIngredients = body.existingIngredients;
+    existingSteps = body.existingSteps;
 
     if (!recipeTitle) {
       return NextResponse.json({ error: 'Recipe title is required' }, { status: 400 });
@@ -12,7 +17,6 @@ export async function POST(request: Request) {
     const GROQ_API_KEY = process.env.GROQ_API_KEY;
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
 
-    // Log API key availability (without exposing the actual keys)
     console.log('[Dashboard] AI API keys status:', {
       groq: !!GROQ_API_KEY,
       gemini: !!GEMINI_API_KEY,
@@ -20,10 +24,8 @@ export async function POST(request: Request) {
       geminiLength: GEMINI_API_KEY?.length || 0,
     });
 
-    // Try Groq first, then Gemini
     let aiResponse = null;
 
-    // Try Groq API
     if (GROQ_API_KEY) {
       try {
         const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -33,7 +35,7 @@ export async function POST(request: Request) {
             'Authorization': `Bearer ${GROQ_API_KEY}`,
           },
           body: JSON.stringify({
-            model: 'llama-3.1-8b-instant', // Updated to current model (llama-3.1-70b-versatile was decommissioned)
+            model: 'llama-3.1-8b-instant', 
             messages: [
               {
                 role: 'system',
@@ -105,7 +107,7 @@ Return ONLY valid JSON in this exact format (no markdown, no extra text):
           const groqData = await groqResponse.json();
           const content = groqData.choices?.[0]?.message?.content;
           if (content) {
-            // Try to extract JSON from the response
+            
             const jsonMatch = content.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
               aiResponse = JSON.parse(jsonMatch[0]);
@@ -125,7 +127,6 @@ Return ONLY valid JSON in this exact format (no markdown, no extra text):
       }
     }
 
-    // If Groq failed, try Gemini
     if (!aiResponse && GEMINI_API_KEY) {
       console.log('[Dashboard] Attempting to use Gemini API...');
       try {
@@ -179,14 +180,12 @@ Return ONLY valid JSON in this exact format (no markdown, no extra text):
   ]
 }`;
 
-        // Use the v1 API endpoint - try different model names if one fails
-        // Try multiple model names in order of preference - current Gemini 2.5 models
         const modelNames = [
-          'gemini-2.5-flash',         // Latest flash model (recommended for speed)
-          'gemini-2.5-flash-lite',    // Latest lightweight model (cost-effective)
-          'gemini-2.5-pro',           // Latest pro model (best quality)
-          'gemini-1.5-flash',         // Fallback to 1.5 flash
-          'gemini-1.5-pro',           // Fallback to 1.5 pro
+          'gemini-2.5-flash',         
+          'gemini-2.5-flash-lite',    
+          'gemini-2.5-pro',           
+          'gemini-1.5-flash',         
+          'gemini-1.5-pro',           
         ];
         
         let geminiResponse = null;
@@ -216,18 +215,18 @@ Return ONLY valid JSON in this exact format (no markdown, no extra text):
             
             if (geminiResponse.ok) {
               console.log(`[Dashboard] ✅ Successfully connected to Gemini model: ${model}`);
-              break; // Success! Exit the loop
+              break; 
             } else {
               const errorText = await geminiResponse.text().catch(() => 'Unknown error');
               lastError = `Model ${model}: HTTP ${geminiResponse.status} - ${errorText.substring(0, 100)}`;
               console.warn(`[Dashboard] Model ${model} failed:`, geminiResponse.status);
-              // Try next model
+              
               geminiResponse = null;
             }
           } catch (error: any) {
             lastError = `Model ${model}: ${error?.message || 'Network error'}`;
             console.warn(`[Dashboard] Error trying model ${model}:`, error?.message);
-            // Try next model
+            
             geminiResponse = null;
           }
         }
@@ -237,7 +236,7 @@ Return ONLY valid JSON in this exact format (no markdown, no extra text):
           const content = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
           console.log('[Dashboard] Gemini API response received, content length:', content?.length || 0);
           if (content) {
-            // Try to extract JSON from the response
+            
             const jsonMatch = content.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
               try {
@@ -257,7 +256,7 @@ Return ONLY valid JSON in this exact format (no markdown, no extra text):
             console.warn('[Dashboard] Response structure:', JSON.stringify(geminiData, null, 2).substring(0, 500));
           }
         } else if (lastError) {
-          // All models failed
+          
           console.error('[Dashboard] ❌ All Gemini models failed to connect');
           console.error('[Dashboard] Last error:', lastError);
           console.error('[Dashboard] Tried models:', modelNames.join(', '));
@@ -272,23 +271,19 @@ Return ONLY valid JSON in this exact format (no markdown, no extra text):
       console.warn('[Dashboard] No AI API keys configured! Please set GEMINI_API_KEY or GROQ_API_KEY in .env.local');
     }
 
-    // If both APIs failed, return a partial response with existing data enhanced as much as possible
     if (!aiResponse) {
       console.warn('[Dashboard] Both Groq and Gemini APIs failed or are not configured', {
         groqConfigured: !!GROQ_API_KEY,
         geminiConfigured: !!GEMINI_API_KEY,
       });
       
-      // Try to enhance existing ingredients by adding reasonable default quantities
       const enhancedIngredients = existingIngredients?.map((ing: any) => {
         const name = typeof ing === 'string' ? ing : (ing.name || '');
         let quantity = typeof ing === 'string' ? '' : (ing.quantity || '');
         
-        // If quantity is missing or vague, provide reasonable defaults based on ingredient name
         if (!quantity || quantity.toLowerCase().includes('as needed') || quantity.toLowerCase().includes('to taste')) {
           const nameLower = name.toLowerCase();
           
-          // Provide default quantities based on common ingredient patterns
           if (nameLower.includes('salt')) quantity = '1/2 tsp';
           else if (nameLower.includes('pepper') || nameLower.includes('black pepper')) quantity = '1/4 tsp';
           else if (nameLower.includes('turmeric')) quantity = '1/4 tsp';
@@ -310,10 +305,9 @@ Return ONLY valid JSON in this exact format (no markdown, no extra text):
         return { name, quantity };
       }) || [];
       
-      // Enhance existing steps with basic clarifications
       const enhancedSteps = existingSteps?.map((step: string) => {
         if (step.length < 30) {
-          // Add basic clarifications for very short steps
+          
           if (step.toLowerCase().includes('heat') && !step.includes('medium')) {
             return step + ' (use medium heat)';
           }
@@ -327,16 +321,14 @@ Return ONLY valid JSON in this exact format (no markdown, no extra text):
         return step;
       }) || [];
       
-      // Return partial enhancement (better than nothing)
       return NextResponse.json({
         ingredients: enhancedIngredients.length > 0 ? enhancedIngredients : existingIngredients || [],
         steps: enhancedSteps.length > 0 ? enhancedSteps : existingSteps || [],
-        partial: true, // Flag to indicate this is a fallback, not full AI generation
+        partial: true, 
         error: 'AI enhancement unavailable - using basic enhancements. Please check GROQ_API_KEY or GEMINI_API_KEY configuration.',
       });
     }
 
-    // Validate and format the response
     const ingredients = Array.isArray(aiResponse.ingredients) 
       ? aiResponse.ingredients.map((ing: any) => ({
           name: typeof ing === 'string' ? ing : (ing.name || ''),
@@ -357,7 +349,6 @@ Return ONLY valid JSON in this exact format (no markdown, no extra text):
   } catch (error: any) {
     console.error('[Dashboard] Error enhancing recipe:', error);
     
-    // Even on error, try to return enhanced existing data
     const enhancedIngredients = existingIngredients?.map((ing: any) => {
       const name = typeof ing === 'string' ? ing : (ing.name || '');
       const quantity = typeof ing === 'string' ? '' : (ing.quantity || '');
@@ -372,7 +363,3 @@ Return ONLY valid JSON in this exact format (no markdown, no extra text):
     }, { status: 500 });
   }
 }
-
-
-
-

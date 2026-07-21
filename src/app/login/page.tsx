@@ -1,16 +1,15 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 
 const Spline = dynamic(() => import('@splinetool/react-spline').then((mod) => mod.default), {
   ssr: false,
-  loading: () => null, // Don't show loading component, show Spline immediately
+  loading: () => null, 
 });
 
-// Field-specific dialogue generators for login form
 const getFieldDialogues = (fieldName: string, formData: { email: string; password: string }, firstName: string = '') => {
   const emailDomain = formData.email.includes('@') ? formData.email.split('@')[1] : '';
   const hasEmail = formData.email.trim().length > 0;
@@ -70,7 +69,6 @@ const getFieldDialogues = (fieldName: string, formData: { email: string; passwor
   return baseDialogues[fieldName] || [];
 };
 
-// Error-specific dialogue messages for login
 const getErrorDialogues = (errorType: string, formData: { email: string; password: string }, firstName: string = ''): string[] => {
   const hasFirstName = firstName.length > 0;
   
@@ -165,13 +163,12 @@ const getErrorDialogues = (errorType: string, formData: { email: string; passwor
   return errorDialogues[errorType] || errorDialogues.general;
 };
 
-// Time-based greeting messages with first name
 const getTimeBasedGreetings = (firstName: string = ''): string[] => {
   const hour = new Date().getHours();
   const hasFirstName = firstName.length > 0;
   
   if (hour >= 5 && hour < 12) {
-    // Morning (5 AM - 11:59 AM)
+    
     return hasFirstName ? [
       `Good morning ${firstName}! ☀️`,
       `Rise and shine ${firstName}! Ready to cook? 🌅`,
@@ -190,7 +187,7 @@ const getTimeBasedGreetings = (firstName: string = ''): string[] => {
       "Good morning! Ready for some delicious recipes? 🌅",
     ];
   } else if (hour >= 12 && hour < 17) {
-    // Afternoon (12 PM - 4:59 PM)
+    
     return hasFirstName ? [
       `Good afternoon ${firstName}! 🌤️`,
       `Afternoon ${firstName}! Perfect time for a meal! 🍽️`,
@@ -209,7 +206,7 @@ const getTimeBasedGreetings = (firstName: string = ''): string[] => {
       "Afternoon! Welcome back to Chefora! 🍽️",
     ];
   } else if (hour >= 17 && hour < 22) {
-    // Evening (5 PM - 9:59 PM)
+    
     return hasFirstName ? [
       `Good evening ${firstName}! 🌆`,
       `Evening ${firstName}! Time for dinner prep! 🍲`,
@@ -228,7 +225,7 @@ const getTimeBasedGreetings = (firstName: string = ''): string[] => {
       "Evening! Welcome back! 🍽️",
     ];
   } else {
-    // Night (10 PM - 4:59 AM)
+    
     return hasFirstName ? [
       `Good night ${firstName}! Or are you a night owl? 🦉`,
       `Late night cooking ${firstName}? I like your style! 🌙`,
@@ -249,7 +246,7 @@ const getTimeBasedGreetings = (firstName: string = ''): string[] => {
   }
 };
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [form, setForm] = useState({ email: '', password: '' });
@@ -266,8 +263,8 @@ export default function LoginPage() {
     fading: boolean;
   }>>([]);
   const [focusedField, setFocusedField] = useState<string | null>(null);
-  const [userName, setUserName] = useState<string>(''); // Store fetched user name
-  const [firstName, setFirstName] = useState<string>(''); // Store first name only
+  const [userName, setUserName] = useState<string>(''); 
+  const [firstName, setFirstName] = useState<string>(''); 
   const splineRef = useRef<HTMLDivElement>(null);
   const splineAppRef = useRef<any>(null);
   const dialogueTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
@@ -275,14 +272,12 @@ export default function LoginPage() {
   const shownDialoguesRef = useRef<Set<string>>(new Set());
   const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Keep formRef updated
   useEffect(() => {
     formRef.current = form;
   }, [form]);
 
-  // Check if user is already logged in and redirect if so
   useEffect(() => {
-    // Only check once on mount, not repeatedly
+    
     let isMounted = true;
     
     const checkAuth = async () => {
@@ -294,22 +289,21 @@ export default function LoginPage() {
         });
         const data = await res.json();
         if (isMounted && data.user && data.user.id) {
-          // User is already logged in, redirect to dashboard
+          
           console.log('[Login Page] User already authenticated, redirecting to dashboard');
-          // Clear the justLoggedIn flag if it exists
+          
           sessionStorage.removeItem('justLoggedIn');
-          // Use window.location.replace to avoid adding to history and prevent back button issues
+          
           window.location.replace('/dashboard');
         }
       } catch (err) {
-        // Ignore errors, user is not logged in
+        
         if (isMounted) {
           console.error('Auth check error:', err);
         }
       }
     };
     
-    // Only check once after a short delay
     const timeout = setTimeout(checkAuth, 300);
     
     return () => {
@@ -318,21 +312,18 @@ export default function LoginPage() {
     };
   }, []);
 
-  // Fetch user name from database when email is entered
   useEffect(() => {
-    // Clear any existing timeout
+    
     if (fetchTimeoutRef.current) {
       clearTimeout(fetchTimeoutRef.current);
     }
 
-    // Only fetch if email is valid format and has @ symbol
     if (!form.email || !form.email.includes('@')) {
-      setUserName(''); // Clear name if email is invalid
+      setUserName(''); 
       setFirstName('');
       return;
     }
 
-    // Debounce the API call - wait 800ms after user stops typing
     fetchTimeoutRef.current = setTimeout(async () => {
       try {
         const res = await fetch('/api/auth/get-user-by-email', {
@@ -344,16 +335,16 @@ export default function LoginPage() {
         const data = await res.json();
         if (res.ok && data.name) {
           setUserName(data.name);
-          // Extract first name from full name
+          
           const first = data.name.trim().split(' ')[0];
           setFirstName(first);
         } else {
-          setUserName(''); // Clear if user not found
+          setUserName(''); 
           setFirstName('');
         }
       } catch (err) {
         console.error('Error fetching user name:', err);
-        setUserName(''); // Clear on error
+        setUserName(''); 
         setFirstName('');
       }
     }, 800);
@@ -365,64 +356,58 @@ export default function LoginPage() {
     };
   }, [form.email]);
 
-  // Generate position near/above bot's head - for form-related messages
   const getBotHeadPosition = (existingPositions: Array<{ top: number; left: number }> = []) => {
-    // Bot's head/face is roughly at: 22-28% left, 32-38% top (avoid this area with more padding)
+    
       const allActivePositions = [
         ...existingPositions,
         ...activeDialogues.map(d => ({ top: d.top, left: d.left }))
-      ].filter(p => p.top >= 0 && p.top <= 100 && p.left >= 0 && p.left <= 100); // Filter out invalid positions
+      ].filter(p => p.top >= 0 && p.top <= 100 && p.left >= 0 && p.left <= 100); 
     
     let attempts = 0;
-    let position;
+    let position: { top: number; left: number };
     
     do {
       const positions = [
-        // Far left side (well away from bot) - constrained to viewport (15-75% top, 5-70% left)
+        
         { top: Math.min(20 + Math.random() * 10, 70), left: 5 + Math.random() * 5 },
-        // Far left, middle height - constrained
+        
         { top: Math.min(35 + Math.random() * 12, 70), left: 5 + Math.random() * 5 },
-        // Far left, lower - constrained
+        
         { top: Math.min(50 + Math.random() * 12, 70), left: 5 + Math.random() * 5 },
-        // Above and far to the right of head (more space) - constrained
+        
         { top: Math.min(20 + Math.random() * 8, 70), left: 35 + Math.random() * 8 },
-        // Above and far to the left of head - constrained
+        
         { top: Math.min(20 + Math.random() * 8, 70), left: 5 + Math.random() * 6 },
-        // To the right side of head (further away) - constrained
+        
         { top: Math.min(35 + Math.random() * 12, 70), left: 35 + Math.random() * 7 },
-        // To the left side of head (further away) - constrained
+        
         { top: Math.min(35 + Math.random() * 12, 70), left: 5 + Math.random() * 6 },
-        // Above head, far to the right - constrained (min 18% from top)
+        
         { top: Math.min(Math.max(18, 20 + Math.random() * 8), 70), left: 35 + Math.random() * 6 },
-        // Above head, far to the left - constrained
+        
         { top: Math.min(Math.max(18, 20 + Math.random() * 8), 70), left: 5 + Math.random() * 5 },
-        // Below and far to the right - constrained
+        
         { top: Math.min(50 + Math.random() * 12, 70), left: 35 + Math.random() * 7 },
-        // Below and far to the left - constrained
+        
         { top: Math.min(50 + Math.random() * 12, 70), left: 5 + Math.random() * 6 },
       ];
       
       position = positions[Math.floor(Math.random() * positions.length)];
       
-      // Ensure position is within viewport bounds (accounting for dialogue size ~220px width, ~80px height)
-      // Container starts at -20vh with 10vh padding, so viewport starts at ~12% of container height
-      // Use more conservative bounds to prevent any cropping
-      position.top = Math.max(15, Math.min(position.top, 75)); // Keep between 15% and 75% from top (accounts for container offset)
-      position.left = Math.max(5, Math.min(position.left, 70)); // Keep between 5% and 70% from left (more padding for bubble width)
+      position.top = Math.max(15, Math.min(position.top, 75)); 
+      position.left = Math.max(5, Math.min(position.left, 70)); 
       
       attempts++;
       
-      // Check if position is too close to bot's face (avoid 18-32% left, 28-42% top with more padding)
       const tooCloseToBot = position.left >= 15 && position.left <= 35 && 
                            position.top >= 25 && position.top <= 45;
       
-      // Check if position is too close to existing dialogues
       const tooCloseToExisting = allActivePositions.some(existing => {
         const distance = Math.sqrt(
           Math.pow(position.top - existing.top, 2) + 
           Math.pow(position.left - existing.left, 2)
         );
-        return distance < 12; // Minimum 12% distance between dialogues
+        return distance < 12; 
       });
       
       if (!tooCloseToBot && !tooCloseToExisting) break;
@@ -432,77 +417,68 @@ export default function LoginPage() {
     return position;
   };
 
-  // Generate position around bot without covering it
   const getGreetingPosition = (existingPositions: Array<{ top: number; left: number }> = []) => {
-    // Bot is at center-left: roughly 15-35% left, 25-55% top
-    // We need to avoid this area completely
+    
     let attempts = 0;
-    let position;
+    let position: { top: number; left: number };
     
     do {
       const zones = [
-        // Top-left corner (safe zone) - constrained to viewport (15-75% top, 5-70% left)
+        
         { top: Math.min(Math.random() * 15 + 18, 70), left: Math.random() * 10 + 5 },
-        // Top-right of left panel (safe zone) - constrained
+        
         { top: Math.min(Math.random() * 15 + 18, 70), left: Math.random() * 8 + 35 },
-        // Left edge top (safe zone) - constrained
+        
         { top: Math.min(Math.random() * 15 + 18, 70), left: Math.random() * 5 + 5 },
-        // Left edge bottom (safe zone) - constrained
+        
         { top: Math.min(Math.random() * 10 + 50, 70), left: Math.random() * 5 + 5 },
-        // Bottom-left corner (safe zone) - constrained
+        
         { top: Math.min(Math.random() * 10 + 60, 70), left: Math.random() * 10 + 5 },
-        // Bottom-right of left panel (safe zone) - constrained
+        
         { top: Math.min(Math.random() * 10 + 60, 70), left: Math.random() * 8 + 35 },
-        // Far left edge middle (safe zone) - constrained
+        
         { top: Math.min(Math.random() * 10 + 45, 70), left: Math.random() * 5 + 5 },
-        // Far left edge top (safe zone) - constrained
+        
         { top: Math.min(Math.random() * 15 + 18, 70), left: Math.random() * 5 + 5 },
-        // Above and far to the right of head - constrained
+        
         { top: Math.min(20 + Math.random() * 8, 70), left: 35 + Math.random() * 8 },
-        // Above and far to the left of head - constrained
+        
         { top: Math.min(20 + Math.random() * 8, 70), left: 5 + Math.random() * 6 },
-        // To the right side of head - constrained
+        
         { top: Math.min(35 + Math.random() * 12, 70), left: 35 + Math.random() * 7 },
-        // To the left side of head - constrained
+        
         { top: Math.min(35 + Math.random() * 12, 70), left: 5 + Math.random() * 6 },
       ];
       
       position = zones[Math.floor(Math.random() * zones.length)];
       
-      // Ensure position is within viewport bounds (accounting for dialogue size ~220px width, ~80px height)
-      // Container starts at -20vh with 10vh padding, so viewport starts at ~12% of container height
-      // Use more conservative bounds to prevent any cropping
-      position.top = Math.max(15, Math.min(position.top, 75)); // Keep between 15% and 75% from top (accounts for container offset)
-      position.left = Math.max(5, Math.min(position.left, 70)); // Keep between 5% and 70% from left (more padding for bubble width)
+      position.top = Math.max(15, Math.min(position.top, 75)); 
+      position.left = Math.max(5, Math.min(position.left, 70)); 
       
       attempts++;
       
-      // Check if position is too close to bot area (15-35% left, 25-55% top)
       const tooCloseToBot = position.left >= 12 && position.left <= 42 && 
                            position.top >= 20 && position.top <= 60;
       
-      // Check if position is too close to existing dialogues
       const tooCloseToExisting = existingPositions.some(existing => {
         const distance = Math.sqrt(
           Math.pow(position.top - existing.top, 2) + 
           Math.pow(position.left - existing.left, 2)
         );
-        return distance < 15; // Minimum 15% distance between dialogues
+        return distance < 15; 
       });
       
       if (!tooCloseToBot && !tooCloseToExisting) break;
-    } while (attempts < 30); // Max 30 attempts to find a good position
+    } while (attempts < 30); 
     
     return position;
   };
 
-  // Show time-based greeting AFTER bot is fully loaded and visible
   useEffect(() => {
     if (!splineLoaded) return;
 
-    // Wait 800ms for bot to be fully visible before showing dialogue
     const showDialogueTimeout = setTimeout(() => {
-      // Use fetched first name if available
+      
       const greetings = getTimeBasedGreetings(firstName);
       const randomGreeting = greetings[Math.floor(Math.random() * greetings.length)];
       
@@ -517,11 +493,9 @@ export default function LoginPage() {
         fading: false,
       }]);
 
-      // Start fade-out after 5-7 seconds
       const fadeDelay = 5000 + Math.random() * 2000;
-      const maxLifetime = 10000; // Maximum 10 seconds before forced removal
+      const maxLifetime = 10000; 
       
-      // Main fade-out timeout
       const fadeTimeout = setTimeout(() => {
         setActiveDialogues(current => {
           const dialogue = current.find(d => d.id === id);
@@ -532,7 +506,6 @@ export default function LoginPage() {
           );
         });
         
-        // Remove after fade-out animation
         const removeTimeout = setTimeout(() => {
           setActiveDialogues(current => current.filter(d => d.id !== id));
           dialogueTimeoutsRef.current.delete(id);
@@ -542,11 +515,9 @@ export default function LoginPage() {
         dialogueTimeoutsRef.current.set(`${id}-remove`, removeTimeout);
       }, fadeDelay);
 
-      // Safety timeout - force removal after max lifetime
       const maxLifetimeTimeout = setTimeout(() => {
         setActiveDialogues(current => current.filter(d => d.id !== id));
         
-        // Clean up all related timeouts
         const fadeTimeout = dialogueTimeoutsRef.current.get(id);
         const removeTimeout = dialogueTimeoutsRef.current.get(`${id}-remove`);
         if (fadeTimeout) {
@@ -565,23 +536,21 @@ export default function LoginPage() {
     }, 800);
 
     return () => {
-      // Clean up on unmount
+      
       clearTimeout(showDialogueTimeout);
       dialogueTimeoutsRef.current.forEach(timeout => {
         if (timeout) clearTimeout(timeout);
       });
       dialogueTimeoutsRef.current.clear();
     };
-  }, [splineLoaded, firstName]); // Re-trigger greeting when first name is fetched
+  }, [splineLoaded, firstName]); 
 
-  // Check if a field has validation errors
   const checkFieldError = (fieldName: string, fieldElement: HTMLElement | null): boolean => {
     if (!fieldElement) return false;
     
     const fieldValue = formRef.current[fieldName as keyof typeof formRef.current];
     const isEmpty = !fieldValue || String(fieldValue).trim().length === 0;
     
-    // Check for browser validation errors first
     if (fieldElement instanceof HTMLInputElement) {
       if (!fieldElement.validity.valid) {
         return true;
@@ -591,7 +560,6 @@ export default function LoginPage() {
       }
     }
     
-    // Check for custom validation errors
     if (fieldName === 'email' && fieldValue) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(String(fieldValue).trim())) {
@@ -602,13 +570,11 @@ export default function LoginPage() {
     return false;
   };
 
-  // Show field-specific dialogue when user finishes typing in a field
   const showFieldDialogue = (fieldName: string, fieldElement: HTMLElement | null = null) => {
     if (!splineLoaded) return;
     
     const currentForm = formRef.current;
     
-    // First check if field has errors - if so, show error dialogue instead
     const hasError = checkFieldError(fieldName, fieldElement);
     if (hasError) {
       let errorType = fieldName;
@@ -625,16 +591,14 @@ export default function LoginPage() {
       return;
     }
     
-    // Field is valid, check if it has a value before showing regular dialogue
     const fieldValue = currentForm[fieldName as keyof typeof currentForm];
     if (!fieldValue || String(fieldValue).trim().length === 0) {
       return;
     }
     
-    // Special handling for email field - show personalized welcome
     if (fieldName === 'email' && firstName) {
       if (!shownDialoguesRef.current.has(`email-welcome-${firstName}`)) {
-        // Show personalized welcome first
+        
         const welcomeMessages = [
           `Hello ${firstName}! Welcome back! 👋`,
           `Hey ${firstName}! Good to see you again! 😊`,
@@ -646,7 +610,6 @@ export default function LoginPage() {
         const welcomeMessage = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
         shownDialoguesRef.current.add(`email-welcome-${firstName}`);
         
-        // Show welcome message
         setTimeout(() => {
           setActiveDialogues(prev => {
             const cleaned = prev.filter(d => !(d.id.includes('field-email') && d.fading));
@@ -709,7 +672,6 @@ export default function LoginPage() {
     const dialogues = getFieldDialogues(fieldName, currentForm, firstName);
     if (!dialogues || dialogues.length === 0) return;
     
-    // Get dialogues that haven't been shown for this field
     const availableDialogues = dialogues.filter(d => {
       const dialogueKey = `${fieldName}-${d}`;
       return !shownDialoguesRef.current.has(dialogueKey);
@@ -719,7 +681,7 @@ export default function LoginPage() {
     let dialogueKey: string;
     
     if (availableDialogues.length === 0) {
-      // All dialogues shown, loop back
+      
       randomDialogue = dialogues[Math.floor(Math.random() * dialogues.length)];
       dialogueKey = `${fieldName}-${randomDialogue}`;
     } else {
@@ -728,7 +690,6 @@ export default function LoginPage() {
       shownDialoguesRef.current.add(dialogueKey);
     }
     
-    // Clear existing field dialogues
     setActiveDialogues(prev => {
       prev.forEach(d => {
         if (d.id.includes('field-')) {
@@ -754,7 +715,6 @@ export default function LoginPage() {
       return prev.map(d => d.id.includes('field-') ? { ...d, fading: true } : d);
     });
     
-    // Show new field dialogue after a short delay
     setTimeout(() => {
       setActiveDialogues(prev => {
         const cleaned = prev.filter(d => !(d.id.includes('field-') && d.fading));
@@ -818,7 +778,6 @@ export default function LoginPage() {
     }, 500);
   };
 
-  // Show error dialogue when validation fails
   const showErrorDialogue = (errorType: string) => {
     if (!splineLoaded) return;
     
@@ -828,7 +787,7 @@ export default function LoginPage() {
     const randomDialogue = errorDialogues[Math.floor(Math.random() * errorDialogues.length)];
     
     setActiveDialogues(prev => {
-      // Clear existing error dialogues
+      
       prev.forEach(d => {
         if (d.id.includes('error-')) {
           const fadeTimeout = dialogueTimeoutsRef.current.get(d.id);
@@ -907,15 +866,14 @@ export default function LoginPage() {
     });
   };
 
-  // Forward pointer events to Spline for full-screen interaction
   useEffect(() => {
     if (!splineLoaded) return;
     
     const forwardPointerEvents = (e: PointerEvent) => {
-      // Only forward if not clicking on form elements
+      
       const target = e.target as HTMLElement;
       if (target.closest('.auth-form-card input, .auth-form-card button, .auth-form-card select, .auth-form-card a')) {
-        return; // Don't forward events when interacting with form elements
+        return; 
       }
 
       if (splineRef.current) {
@@ -951,16 +909,14 @@ export default function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setLoading(false); // Don't set loading until validation passes
+    setLoading(false); 
 
-    // Client-side validation
     if (!form.email.trim()) {
       setError('Email is required');
       showErrorDialogue('email');
       return;
     }
 
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(form.email.trim())) {
       setError('Please enter a valid email address');
@@ -974,11 +930,10 @@ export default function LoginPage() {
       return;
     }
 
-    // All validation passed, proceed with submission
     setLoading(true);
 
     try {
-      // Always redirect to dashboard after login
+      
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -987,12 +942,12 @@ export default function LoginPage() {
           totpCode: requires2FA ? twoFACode : undefined,
           redirectTo: '/dashboard',
         }),
-        credentials: 'include', // Ensure cookies are included
+        credentials: 'include', 
       });
 
       const data = await res.json();
       if (!res.ok) {
-        // Check if 2FA is required
+        
         if (data.requires2FA) {
           setRequires2FA(true);
           setError('Enter your 2FA code to continue');
@@ -1000,12 +955,10 @@ export default function LoginPage() {
           return;
         }
 
-        // Handle server-side errors
         const errorMessage = data.error || 'Invalid credentials';
         setError(errorMessage);
         setLoading(false);
         
-        // Show appropriate error dialogue
         if (errorMessage.toLowerCase().includes('invalid') || 
             errorMessage.toLowerCase().includes('credentials') ||
             errorMessage.toLowerCase().includes('wrong')) {
@@ -1018,13 +971,11 @@ export default function LoginPage() {
         return;
       }
 
-      // Login successful - cookie is set in the response
       console.log('[Login] Login successful, cookie set. Verifying and redirecting...');
       
-      // Wait a moment for browser to process the cookie, then verify and redirect
       setTimeout(async () => {
         try {
-          // Verify the cookie is available
+          
           const verifyRes = await fetch('/api/auth/me', {
             method: 'GET',
             credentials: 'include',
@@ -1035,18 +986,18 @@ export default function LoginPage() {
           
           if (verifyData.user && verifyData.user.id) {
             console.log('[Login] Cookie verified, redirecting to dashboard');
-            // Cookie is confirmed, redirect directly to dashboard
+            
             window.location.replace('/dashboard');
           } else {
             console.warn('[Login] Cookie not yet available, waiting...');
-            // Retry after a delay
+            
             setTimeout(() => {
               window.location.replace('/dashboard');
             }, 1000);
           }
         } catch (err) {
           console.error('[Login] Error verifying cookie:', err);
-          // On error, redirect anyway
+          
           window.location.replace('/dashboard');
         }
       }, 500);
@@ -1060,7 +1011,7 @@ export default function LoginPage() {
 
   return (
     <div className="auth-page-container">
-      {/* Animated background */}
+      {}
       <div className="auth-bg-animated">
         <div className="gradient-orb orb-1"></div>
         <div className="gradient-orb orb-2"></div>
@@ -1068,7 +1019,7 @@ export default function LoginPage() {
       </div>
 
       <div className="auth-layout">
-        {/* Left side - 3D Spline Scene */}
+        {}
         <div 
           className={`auth-3d-panel ${splineLoaded ? 'spline-loaded' : 'spline-loading'}`} 
           ref={splineRef}
@@ -1079,12 +1030,11 @@ export default function LoginPage() {
               splineAppRef.current = app;
               console.log('Spline scene loaded, app:', app);
               
-              // Show immediately after load - no delay needed
               setSplineLoaded(true);
             }}
           />
           
-          {/* Time-based Greeting Dialogues */}
+          {}
           {activeDialogues.map((dialogue) => (
             <div
               key={dialogue.id}
@@ -1103,7 +1053,7 @@ export default function LoginPage() {
           ))}
         </div>
 
-        {/* Login Form */}
+        {}
         <div className="auth-form-panel">
           <div className="auth-form-card">
             <div className="auth-form-header">
@@ -1126,7 +1076,7 @@ export default function LoginPage() {
             <form 
               onSubmit={handleSubmit} 
               onInvalid={(e) => {
-                // Catch browser validation errors
+                
                 const target = e.target as HTMLElement;
                 if (target instanceof HTMLInputElement) {
                   const fieldName = target.name || target.id || '';
@@ -1355,5 +1305,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageContent />
+    </Suspense>
   );
 }

@@ -33,23 +33,20 @@ export default function ProfilePage({ profile, initialPosts, activeTab = 'posts'
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isOwnProfile = currentUserId && profile.user_id === currentUserId;
 
-  // Update posts when initialPosts changes (e.g., after tab switch)
   useEffect(() => {
     setPosts(initialPosts);
   }, [initialPosts]);
 
-  // Handle post deletion - remove from state and update count
   const handlePostDelete = (postId: string) => {
     setPosts(prevPosts => prevPosts.filter(p => p.id !== postId));
-    // Update post count if on own profile
+    
     if (isOwnProfile && currentTab === 'posts') {
       setPostCount(prev => Math.max(0, prev - 1));
-      // Also fetch live count to ensure accuracy
+      
       fetchLivePostCount();
     }
   };
 
-  // Fetch live post count from database
   const fetchLivePostCount = async () => {
     try {
       const response = await fetch(`/api/community/profile?username=${encodeURIComponent(profile.username)}`);
@@ -64,16 +61,13 @@ export default function ProfilePage({ profile, initialPosts, activeTab = 'posts'
     }
   };
 
-  // Fetch live post count on mount and periodically to keep it up to date
   useEffect(() => {
     fetchLivePostCount();
     
-    // Poll every 3 seconds to keep count updated without refresh
     const interval = setInterval(() => {
       fetchLivePostCount();
     }, 3000);
 
-    // Listen for focus events (when user comes back to tab)
     const handleFocus = () => {
       fetchLivePostCount();
     };
@@ -86,12 +80,10 @@ export default function ProfilePage({ profile, initialPosts, activeTab = 'posts'
     };
   }, [profile.username]);
 
-  // Also update when posts list changes (optimistic update for own profile)
   useEffect(() => {
-    // Optimistically update count for own profile based on visible posts
-    // The periodic fetch will ensure accuracy
+    
     if (isOwnProfile && currentTab === 'posts') {
-      // Only update if we're on the posts tab
+      
       fetchLivePostCount();
     }
   }, [initialPosts.length, isOwnProfile, currentTab]);
@@ -116,7 +108,7 @@ export default function ProfilePage({ profile, initialPosts, activeTab = 'posts'
         await cancelFriendRequest(profile.user_id);
         setFriendStatus('none');
       } else if (friendStatus === 'pending') {
-        // This would be handled on the friends page, but we can show a message
+        
         router.push('/community/friends');
       } else if (isFriend) {
         if (confirm('Are you sure you want to remove this friend?')) {
@@ -138,12 +130,11 @@ export default function ProfilePage({ profile, initialPosts, activeTab = 'posts'
         const img = new window.Image();
         img.onload = () => {
           const canvas = document.createElement('canvas');
-          // Use higher max size for better quality (1024px for avatars)
+          
           const maxSize = 1024;
           let width = img.width;
           let height = img.height;
 
-          // Only resize if image is larger than maxSize
           if (width > maxSize || height > maxSize) {
             if (width > height) {
               height = (height * maxSize) / width;
@@ -163,17 +154,15 @@ export default function ProfilePage({ profile, initialPosts, activeTab = 'posts'
             return;
           }
 
-          // Use high-quality settings
           ctx.imageSmoothingEnabled = true;
           ctx.imageSmoothingQuality = 'high';
           
           ctx.drawImage(img, 0, 0, width, height);
           
-          // Use PNG for better quality, or JPEG at 95% quality
           const isPng = file.type === 'image/png';
           const dataUrl = isPng 
-            ? canvas.toDataURL('image/png') // PNG for lossless quality
-            : canvas.toDataURL('image/jpeg', 0.95); // 95% quality for JPEG
+            ? canvas.toDataURL('image/png') 
+            : canvas.toDataURL('image/jpeg', 0.95); 
           resolve(dataUrl);
         };
         img.onerror = reject;
@@ -188,13 +177,11 @@ export default function ProfilePage({ profile, initialPosts, activeTab = 'posts'
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       alert('Please select an image file');
       return;
     }
 
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       alert('Image size must be less than 5MB');
       return;
@@ -218,14 +205,13 @@ export default function ProfilePage({ profile, initialPosts, activeTab = 'posts'
       const data = await res.json();
       setAvatarUrl(data.avatar_url);
       
-      // Refresh the page to update all avatar displays
       router.refresh();
     } catch (error: any) {
       console.error('Avatar upload error:', error);
       alert(error.message || 'Failed to upload avatar');
     } finally {
       setUploading(false);
-      // Reset file input
+      
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -237,13 +223,13 @@ export default function ProfilePage({ profile, initialPosts, activeTab = 'posts'
   };
 
   const handleAvatarClick = (e: React.MouseEvent) => {
-    // Don't open modal if clicking the camera button, input, or uploading
+    
     const target = e.target as HTMLElement;
     if (uploading || target.closest('button') || target.closest('input')) {
       e.stopPropagation();
       return;
     }
-    // Only open modal if there's an avatar image
+    
     if (avatarUrl) {
       setIsAvatarModalOpen(true);
     }
@@ -253,13 +239,11 @@ export default function ProfilePage({ profile, initialPosts, activeTab = 'posts'
     setIsAvatarModalOpen(false);
   };
 
-  // Find dashboard-main container
   useEffect(() => {
     const main = document.querySelector('.dashboard-main') as HTMLElement;
     setDashboardMain(main);
   }, []);
 
-  // Close modal on Escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isAvatarModalOpen) {
@@ -272,7 +256,7 @@ export default function ProfilePage({ profile, initialPosts, activeTab = 'posts'
 
   return (
     <div className="community-profile-page">
-      {/* Cover Image */}
+      {}
       {profile.cover_image_url && (
         <div className="community-profile-cover">
           <Image
@@ -286,7 +270,7 @@ export default function ProfilePage({ profile, initialPosts, activeTab = 'posts'
         </div>
       )}
 
-      {/* Profile Header */}
+      {}
       <div className="community-profile-header-card community-neon-card" style={{
         marginBottom: '24px',
         padding: 'var(--pad-lg)',
@@ -434,7 +418,7 @@ export default function ProfilePage({ profile, initialPosts, activeTab = 'posts'
               </div>
               <div className="community-profile-actions">
                 {isOwnProfile ? (
-                  // Own profile - show useful actions
+                  
                   <>
                     <Link href="/community/new">
                       <button className="btn tap-ripple">
@@ -466,7 +450,7 @@ export default function ProfilePage({ profile, initialPosts, activeTab = 'posts'
                     </Link>
                   </>
                 ) : (
-                  // Other user's profile - show friend/follow actions
+                  
                   !profile.is_blocked && (
                     <>
                       {isFriend ? (
@@ -536,7 +520,7 @@ export default function ProfilePage({ profile, initialPosts, activeTab = 'posts'
         </div>
       </div>
 
-      {/* Tabs */}
+      {}
       <div className="community-profile-tabs community-neon-card" style={{ 
         marginTop: '24px',
         padding: 'var(--pad-md)',
@@ -585,7 +569,7 @@ export default function ProfilePage({ profile, initialPosts, activeTab = 'posts'
         </div>
       </div>
 
-      {/* View Toggle - Only show for posts and saved tabs */}
+      {}
       {(currentTab === 'posts' || currentTab === 'saved') && posts.length > 0 && (
         <div style={{ 
           display: 'flex', 
@@ -623,7 +607,7 @@ export default function ProfilePage({ profile, initialPosts, activeTab = 'posts'
         </div>
       )}
 
-      {/* Tab Content */}
+      {}
       <div className="community-profile-content" style={{ marginTop: '24px' }}>
         {currentTab === 'posts' && (
           <>
@@ -760,7 +744,7 @@ export default function ProfilePage({ profile, initialPosts, activeTab = 'posts'
         )}
       </div>
 
-      {/* Avatar Image Modal - Rendered via Portal inside dashboard-main */}
+      {}
       {isAvatarModalOpen && avatarUrl && dashboardMain && createPortal(
         <div
           className="avatar-modal-overlay"
@@ -843,4 +827,3 @@ export default function ProfilePage({ profile, initialPosts, activeTab = 'posts'
     </div>
   );
 }
-

@@ -1,4 +1,4 @@
-// src/app/api/auth/login/route.ts
+
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { verifyPassword, createSessionToken, SESSION_COOKIE } from '@/lib/auth';
@@ -30,11 +30,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    // Check if 2FA is enabled
     const has2FA = user.totp_secret !== null && user.totp_secret !== undefined;
 
     if (has2FA) {
-      // 2FA is enabled - require TOTP code
+      
       if (!totpCode) {
         return NextResponse.json(
           { 
@@ -45,7 +44,6 @@ export async function POST(req: Request) {
         );
       }
 
-      // Verify the TOTP code
       const isValidCode = verifyToken(totpCode, user.totp_secret!);
       if (!isValidCode) {
         return NextResponse.json(
@@ -58,22 +56,16 @@ export async function POST(req: Request) {
       }
     }
 
-    // Authentication successful - create session token
     const token = createSessionToken(user.id);
 
-    // Return JSON response with cookie set
-    // The client will handle the redirect after cookie is set
     const res = NextResponse.json({ ok: true });
     
-    // Set the session cookie with proper attributes
-    // Note: In development, we don't set 'secure' to allow http://localhost
-    // In production, 'secure' will be true
     res.cookies.set(SESSION_COOKIE, token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax', // 'lax' allows cookies to be sent with top-level navigations
+      sameSite: 'lax', 
       path: '/',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 60 * 60 * 24 * 7, 
     });
 
     console.log('[Login API] Cookie set successfully:', {

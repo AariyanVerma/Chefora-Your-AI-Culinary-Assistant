@@ -9,11 +9,9 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Fetch all pantry items (excluding expired)
     const now = new Date();
     const nowDateStr = now.toISOString().split('T')[0];
 
-    // Fetch ONLY non-expired pantry items, sorted by expiry (soonest first)
     const pantryItemsRes = await sql<{
       name: string;
       expiry_date: string | null;
@@ -36,11 +34,11 @@ export async function GET() {
     const pantryIngredients = pantryItemsRes.rows.map(item => {
       let daysUntilExpiry: number;
       if (!item.expiry_date) {
-        daysUntilExpiry = 999; // Items without expiry get a high number
+        daysUntilExpiry = 999; 
       } else {
         const expiryDate = new Date(item.expiry_date);
         expiryDate.setHours(0, 0, 0, 0);
-        // Calculate days until expiry (0 = today, negative = expired)
+        
         daysUntilExpiry = Math.floor((expiryDate.getTime() - nowDateOnly.getTime()) / (1000 * 60 * 60 * 24));
       }
       return {
@@ -48,7 +46,7 @@ export async function GET() {
         expiry_date: item.expiry_date || '',
         daysUntilExpiry: daysUntilExpiry,
       };
-    }).filter(ing => ing.daysUntilExpiry >= 0); // Double-check: NEVER include expired items
+    }).filter(ing => ing.daysUntilExpiry >= 0); 
 
     return NextResponse.json({ ingredients: pantryIngredients });
   } catch (error: any) {
@@ -59,7 +57,3 @@ export async function GET() {
     );
   }
 }
-
-
-
-

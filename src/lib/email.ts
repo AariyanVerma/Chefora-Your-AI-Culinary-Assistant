@@ -1,6 +1,3 @@
-// Email utility functions for sending password reset codes
-// This file provides email sending functionality
-
 interface EmailOptions {
   to: string;
   subject: string;
@@ -8,56 +5,46 @@ interface EmailOptions {
   text?: string;
 }
 
-/**
- * Send email using configured email service
- * Currently supports:
- * - Resend (recommended for production)
- * - SendGrid
- * - Nodemailer (SMTP)
- * - Console fallback (development only)
- */
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
   const { to, subject, html, text } = options;
 
-  // Try Resend API first (if configured)
   if (process.env.RESEND_API_KEY) {
     try {
       const { Resend } = await import('resend').catch(() => ({ Resend: null }));
       if (Resend) {
         const resend = new Resend(process.env.RESEND_API_KEY);
-        // Use test domain for development if not specified (doesn't require domain verification)
-        const fromEmail = process.env.RESEND_FROM_EMAIL || 
-          (process.env.NODE_ENV === 'development' 
-            ? 'Chefora <onboarding@resend.dev>' 
+        const fromEmail =
+          process.env.RESEND_FROM_EMAIL ||
+          (process.env.NODE_ENV === 'development'
+            ? 'Chefora <onboarding@resend.dev>'
             : 'Chefora <noreply@chefora.com>');
-        
+
         const result = await resend.emails.send({
           from: fromEmail,
           to: [to],
           subject,
           html,
-          text: text || html.replace(/<[^>]*>/g, ''), // Fallback to plain text from HTML
+          text: text || html.replace(/<[^>]*>/g, ''),
         });
         if (result.data) {
-          console.log('[Email] ✅ Sent via Resend. Email ID:', result.data.id);
           return true;
         }
         if (result.error) {
-          console.error('[Email] ❌ Resend error:', result.error);
+          console.error('[Email] Resend error:', result.error);
         }
       }
-    } catch (err: any) {
-      console.error('[Email] ❌ Resend error:', err?.message || err);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : err;
+      console.error('[Email] Resend error:', message);
     }
   }
 
-  // Try SendGrid API (if configured)
   if (process.env.SENDGRID_API_KEY) {
     try {
       const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`,
+          Authorization: `Bearer ${process.env.SENDGRID_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -71,7 +58,6 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
         }),
       });
       if (response.ok) {
-        console.log('[Email] Sent via SendGrid');
         return true;
       }
     } catch (err) {
@@ -79,54 +65,19 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
     }
   }
 
-  // Try Nodemailer SMTP (if configured)
-  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
-    try {
-      const nodemailer = await import('nodemailer').catch(() => null);
-      if (nodemailer) {
-        const transporter = nodemailer.createTransport({
-          host: process.env.SMTP_HOST,
-          port: parseInt(process.env.SMTP_PORT || '587'),
-          secure: process.env.SMTP_SECURE === 'true',
-          auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS,
-          },
-        });
-
-        await transporter.sendMail({
-          from: process.env.SMTP_FROM || process.env.SMTP_USER,
-          to,
-          subject,
-          html,
-          text,
-        });
-        console.log('[Email] Sent via SMTP');
-        return true;
-      }
-    } catch (err) {
-      console.error('[Email] SMTP error:', err);
-    }
-  }
-
-  // Fallback: Log to console (development only)
   if (process.env.NODE_ENV === 'development') {
     console.log('\n========== EMAIL (Development Mode - Not Sent) ==========');
     console.log('To:', to);
     console.log('Subject:', subject);
     console.log('Body (HTML):', html);
     console.log('========================================================\n');
-    return false; // Return false to indicate email wasn't actually sent
+    return false;
   }
 
-  // Production fallback: log error
   console.error('[Email] No email service configured. Email not sent.');
   return false;
 }
 
-/**
- * Send password reset code email
- */
 export async function sendPasswordResetEmail(
   email: string,
   name: string,
@@ -180,7 +131,3 @@ If you didn't request this password reset, you can safely ignore this email.
 
   return await sendEmail({ to: email, subject, html, text });
 }
-
-
-
-

@@ -6,7 +6,6 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
-// Validation schemas
 const shoppingListSchema = z.object({
   name: z.string().min(1, 'Name is required').max(200),
   store: z.string().max(100).nullable().optional(),
@@ -69,7 +68,6 @@ export type ShoppingItem = {
   updated_at: string;
 };
 
-// Get all shopping lists for user
 export async function getShoppingLists(): Promise<ShoppingList[]> {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
@@ -93,7 +91,6 @@ export async function getShoppingLists(): Promise<ShoppingList[]> {
   }));
 }
 
-// Get shopping list by ID
 export async function getShoppingList(listId: string): Promise<ShoppingList | null> {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
@@ -107,7 +104,6 @@ export async function getShoppingList(listId: string): Promise<ShoppingList | nu
   return result.rows[0] || null;
 }
 
-// Get items for a list
 export async function getShoppingItems(
   listId: string,
   filters?: {
@@ -123,7 +119,6 @@ export async function getShoppingItems(
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  // Verify list belongs to user
   const listCheck = await sql<{ id: string }>`
     SELECT id FROM shopping_lists WHERE id = ${listId} AND user_id = ${user.id}
   `;
@@ -131,7 +126,6 @@ export async function getShoppingItems(
     return [];
   }
 
-  // Fetch all items for the list (we'll filter in memory to avoid SQL complexity)
   const result = await sql<ShoppingItem>`
     SELECT * FROM shopping_items 
     WHERE list_id = ${listId} AND user_id = ${user.id}
@@ -140,7 +134,6 @@ export async function getShoppingItems(
 
   let filtered = result.rows;
 
-  // Apply filters
   if (filters?.search) {
     const searchLower = filters.search.toLowerCase();
     filtered = filtered.filter(item =>
@@ -169,7 +162,6 @@ export async function getShoppingItems(
     filtered = filtered.filter(item => item.pantry_item_id !== null);
   }
 
-  // Apply sorting
   if (sortBy === 'aisle') {
     filtered.sort((a, b) => {
       if (!a.aisle && !b.aisle) return a.name.localeCompare(b.name);
@@ -192,14 +184,13 @@ export async function getShoppingItems(
   } else if (sortBy === 'name') {
     filtered.sort((a, b) => a.name.localeCompare(b.name));
   } else {
-    // Default: recently added
+    
     filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }
 
   return filtered;
 }
 
-// Create shopping list
 export async function createShoppingList(data: z.infer<typeof shoppingListSchema>): Promise<{ id: string }> {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
@@ -217,7 +208,6 @@ export async function createShoppingList(data: z.infer<typeof shoppingListSchema
   return { id: result.rows[0].id };
 }
 
-// Update shopping list
 export async function updateShoppingList(
   listId: string,
   data: z.infer<typeof shoppingListSchema>
@@ -225,7 +215,6 @@ export async function updateShoppingList(
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  // Verify ownership
   const listCheck = await sql<{ id: string }>`
     SELECT id FROM shopping_lists WHERE id = ${listId} AND user_id = ${user.id}
   `;
@@ -249,12 +238,10 @@ export async function updateShoppingList(
   return { success: true };
 }
 
-// Delete shopping list
 export async function deleteShoppingList(listId: string): Promise<{ success: boolean }> {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  // Verify ownership
   const listCheck = await sql<{ id: string }>`
     SELECT id FROM shopping_lists WHERE id = ${listId} AND user_id = ${user.id}
   `;
@@ -268,7 +255,6 @@ export async function deleteShoppingList(listId: string): Promise<{ success: boo
   return { success: true };
 }
 
-// Archive shopping list
 export async function archiveShoppingList(listId: string): Promise<{ success: boolean }> {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
@@ -283,12 +269,10 @@ export async function archiveShoppingList(listId: string): Promise<{ success: bo
   return { success: true };
 }
 
-// Duplicate shopping list
 export async function duplicateShoppingList(listId: string): Promise<{ id: string }> {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  // Get original list
   const originalList = await sql<ShoppingList>`
     SELECT * FROM shopping_lists WHERE id = ${listId} AND user_id = ${user.id}
   `;
@@ -298,7 +282,6 @@ export async function duplicateShoppingList(listId: string): Promise<{ id: strin
 
   const list = originalList.rows[0];
 
-  // Create new list
   const newListResult = await sql<{ id: string }>`
     INSERT INTO shopping_lists (user_id, name, store, planned_date)
     VALUES (${user.id}, ${list.name + ' (Copy)'}, ${list.store}, ${list.planned_date})
@@ -307,7 +290,6 @@ export async function duplicateShoppingList(listId: string): Promise<{ id: strin
 
   const newListId = newListResult.rows[0].id;
 
-  // Copy items
   await sql`
     INSERT INTO shopping_items (list_id, user_id, name, quantity, unit, category, aisle, store, priority, price_est, notes, pantry_item_id, recipe_id, image_url)
     SELECT ${newListId}, user_id, name, quantity, unit, category, aisle, store, priority, price_est, notes, pantry_item_id, recipe_id, image_url
@@ -319,7 +301,6 @@ export async function duplicateShoppingList(listId: string): Promise<{ id: strin
   return { id: newListId };
 }
 
-// Create shopping item
 export async function createShoppingItem(
   listId: string,
   data: z.infer<typeof shoppingItemSchema>
@@ -327,7 +308,6 @@ export async function createShoppingItem(
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  // Verify list ownership
   const listCheck = await sql<{ id: string }>`
     SELECT id FROM shopping_lists WHERE id = ${listId} AND user_id = ${user.id}
   `;
@@ -337,7 +317,6 @@ export async function createShoppingItem(
 
   const validated = shoppingItemSchema.parse(data);
   
-  // Transform image_url to null if empty string
   const imageUrl = validated.image_url && validated.image_url.trim() ? validated.image_url.trim() : null;
 
   const result = await sql<{ id: string }>`
@@ -359,7 +338,6 @@ export async function createShoppingItem(
   return { id: result.rows[0].id };
 }
 
-// Update shopping item
 export async function updateShoppingItem(
   itemId: string,
   data: Partial<z.infer<typeof shoppingItemSchema>> & { purchased?: boolean }
@@ -367,7 +345,6 @@ export async function updateShoppingItem(
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  // Verify ownership
   const itemCheck = await sql<{ id: string }>`
     SELECT id FROM shopping_items WHERE id = ${itemId} AND user_id = ${user.id}
   `;
@@ -375,10 +352,6 @@ export async function updateShoppingItem(
     throw new Error('Item not found');
   }
 
-  // Since @vercel/postgres doesn't support dynamic column updates easily,
-  // we'll update each field that's provided. In practice, most updates will be single-field
-  // (like toggling purchased), so this is acceptable.
-  
   if (data.name !== undefined) {
     await sql`UPDATE shopping_items SET name = ${data.name}, updated_at = NOW() WHERE id = ${itemId} AND user_id = ${user.id}`;
   }
@@ -420,15 +393,12 @@ export async function updateShoppingItem(
     await sql`UPDATE shopping_items SET image_url = ${imageUrl}, updated_at = NOW() WHERE id = ${itemId} AND user_id = ${user.id}`;
   }
 
-  // Only revalidate if it's not just a purchased toggle (to avoid full page reload)
-  // For purchased toggles, the client will handle the UI update
   if (!(Object.keys(data).length === 1 && 'purchased' in data)) {
     revalidatePath('/shopping-list');
   }
   return { success: true };
 }
 
-// Delete shopping item
 export async function deleteShoppingItem(itemId: string): Promise<{ success: boolean }> {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
@@ -439,14 +409,12 @@ export async function deleteShoppingItem(itemId: string): Promise<{ success: boo
   return { success: true };
 }
 
-// Bulk update shopping items
 export async function bulkUpdateShoppingItems(data: z.infer<typeof bulkUpdateSchema>): Promise<{ success: boolean }> {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
   const validated = bulkUpdateSchema.parse(data);
 
-  // Verify all items belong to user
   const ownershipCheck = await sql<{ id: string }>`
     SELECT id FROM shopping_items 
     WHERE id = ANY(${validated.item_ids}) AND user_id = ${user.id}
@@ -482,7 +450,7 @@ export async function bulkUpdateShoppingItems(data: z.infer<typeof bulkUpdateSch
 
     case 'move_to_list':
       if (!validated.target_list_id) throw new Error('Target list ID required');
-      // Verify target list ownership
+      
       const targetListCheck = await sql<{ id: string }>`
         SELECT id FROM shopping_lists WHERE id = ${validated.target_list_id} AND user_id = ${user.id}
       `;
@@ -521,18 +489,12 @@ export async function bulkUpdateShoppingItems(data: z.infer<typeof bulkUpdateSch
   return { success: true };
 }
 
-// Get smart pantry suggestions - automatically detects items that need restocking
-// This is smarter than relying on manual flags because it analyzes:
-// 1. Low quantity items (quantity < 1 or very low)
-// 2. Items expiring soon (need replacement)
-// 3. Items that were purchased frequently but aren't in pantry currently
-// 4. Items opened recently (likely running out)
 export async function getPantryLowItems(listId?: string): Promise<Array<{ id: string; name: string; category: string; reason: string }>> {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
   try {
-    // Get items already in current shopping list to avoid duplicates
+    
     let currentListItems = new Set<string>();
     if (listId) {
       const listItems = await sql<{ name: string }>`
@@ -543,8 +505,6 @@ export async function getPantryLowItems(listId?: string): Promise<Array<{ id: st
       currentListItems = new Set(listItems.rows.map(item => item.name.toLowerCase().trim()));
     }
 
-
-    // Strategy 1: Items with very low quantity (< 1) or zero quantity
     const lowQuantityItems = await sql<{ id: string; name: string; category: string; quantity: number }>`
       SELECT id, name, category, quantity
       FROM pantry_items
@@ -554,7 +514,6 @@ export async function getPantryLowItems(listId?: string): Promise<Array<{ id: st
       LIMIT 15
     `;
 
-    // Strategy 2: Items expiring within 3 days (need replacement soon)
     const expiringSoonItems = await sql<{ id: string; name: string; category: string; expiry_date: string }>`
       SELECT id, name, category, expiry_date
       FROM pantry_items
@@ -565,7 +524,6 @@ export async function getPantryLowItems(listId?: string): Promise<Array<{ id: st
       LIMIT 15
     `;
 
-    // Strategy 3: Items that are opened and might be running out
     const openedItems = await sql<{ id: string; name: string; category: string; quantity: number }>`
       SELECT id, name, category, quantity
       FROM pantry_items
@@ -576,7 +534,6 @@ export async function getPantryLowItems(listId?: string): Promise<Array<{ id: st
       LIMIT 15
     `;
 
-    // Combine and deduplicate results, filtering out items already in shopping list
     const allItems = new Map<string, { id: string; name: string; category: string; reason: string }>();
     
     lowQuantityItems.rows.forEach(item => {
@@ -627,15 +584,12 @@ export async function getPantryLowItems(listId?: string): Promise<Array<{ id: st
   }
 }
 
-// Get smart recipe-based suggestions
-// Analyzes what ingredients are commonly purchased together in shopping lists
-// and suggests items that are often bought but missing from pantry
 export async function getRecipeSuggestions(listId?: string): Promise<Array<{ name: string; category: string | null; reason: string }>> {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
   try {
-    // Get current pantry items
+    
     const pantryItems = await sql<{ name: string }>`
       SELECT LOWER(TRIM(name)) as name
       FROM pantry_items
@@ -643,7 +597,6 @@ export async function getRecipeSuggestions(listId?: string): Promise<Array<{ nam
     `;
     const pantryItemNames = new Set(pantryItems.rows.map(item => item.name.toLowerCase().trim()));
 
-    // Get items already in current shopping list
     let currentListItems = new Set<string>();
     if (listId) {
       const listItems = await sql<{ name: string }>`
@@ -654,7 +607,6 @@ export async function getRecipeSuggestions(listId?: string): Promise<Array<{ nam
       currentListItems = new Set(listItems.rows.map(item => item.name.toLowerCase().trim()));
     }
 
-    // Get current list items to filter them out
     let currentListItemsLower = new Set<string>();
     if (listId) {
       const listItemsResult = await sql<{ name: string }>`
@@ -665,8 +617,6 @@ export async function getRecipeSuggestions(listId?: string): Promise<Array<{ nam
       currentListItemsLower = new Set(listItemsResult.rows.map(item => item.name));
     }
 
-    // Strategy: Find items that appear frequently in shopping lists (purchased items)
-    // but are NOT currently in the pantry - these are likely common cooking ingredients
     const frequentlyPurchasedButNotInPantry = await sql<{ 
       name: string; 
       category: string | null; 
@@ -689,7 +639,6 @@ export async function getRecipeSuggestions(listId?: string): Promise<Array<{ nam
       LIMIT 10
     `;
 
-    // Filter out items already in current shopping list
     const filtered = frequentlyPurchasedButNotInPantry.rows.filter(item => 
       !currentListItemsLower.has(item.name.toLowerCase().trim())
     );
@@ -700,7 +649,6 @@ export async function getRecipeSuggestions(listId?: string): Promise<Array<{ nam
       reason: `Purchased ${item.frequency} time${item.frequency > 1 ? 's' : ''} recently - commonly needed`
     }));
 
-    // If we don't have enough suggestions from history, add some common essentials
     if (suggestions.length < 5) {
       const commonEssentials = [
         { name: 'Onion', category: 'Produce', reason: 'Essential cooking ingredient' },
@@ -727,13 +675,12 @@ export async function getRecipeSuggestions(listId?: string): Promise<Array<{ nam
   }
 }
 
-// Get frequently bought items from shopping history
 export async function getFrequentlyBoughtItems(listId?: string): Promise<Array<{ name: string; category: string | null; frequency: number }>> {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
   try {
-    // Get items already in current shopping list
+    
     let currentListItems = new Set<string>();
     if (listId) {
       const listItems = await sql<{ name: string }>`
@@ -744,7 +691,6 @@ export async function getFrequentlyBoughtItems(listId?: string): Promise<Array<{
       currentListItems = new Set(listItems.rows.map(item => item.name.toLowerCase().trim()));
     }
 
-    // Get frequently purchased items from shopping history (items marked as purchased in the last 30 days)
     const result = await sql<{ name: string; category: string | null; frequency: number }>`
       SELECT 
         name,
@@ -760,7 +706,6 @@ export async function getFrequentlyBoughtItems(listId?: string): Promise<Array<{
       LIMIT 10
     `;
 
-    // Filter out items already in current shopping list
     const suggestions = result.rows.filter(item => {
       const itemNameLower = item.name.toLowerCase().trim();
       return !currentListItems.has(itemNameLower);
@@ -772,6 +717,3 @@ export async function getFrequentlyBoughtItems(listId?: string): Promise<Array<{
     return [];
   }
 }
-
-
-

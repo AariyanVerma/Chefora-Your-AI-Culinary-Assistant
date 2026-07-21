@@ -48,7 +48,6 @@ export default function ItemsBoard({
     }
   };
 
-  // Group items by category/aisle for grouped view
   const groupedItems = viewMode === 'grouped' ? items.reduce((acc, item) => {
     const groupKey = item.category || item.aisle || 'Other';
     if (!acc[groupKey]) {
@@ -61,9 +60,9 @@ export default function ItemsBoard({
   if (items.length === 0) {
     return (
       <div className="shopping-items-empty">
-        {/* Background card - full width */}
+        {}
         <div className="shopping-empty-background-card"></div>
-        {/* Foreground card */}
+        {}
         <div className="card-wrapper">
           <div className="card-background"></div>
           <div className="glass card card-mount">
@@ -140,10 +139,10 @@ export default function ItemsBoard({
                       onSelect={() => toggleSelect(item.id)}
                       onUpdate={(shouldRefresh = false) => {
                         if (onItemUpdate) {
-                          // Optimistically update the item immediately
+                          
                           onItemUpdate(item.id, { purchased: !item.purchased });
                         }
-                        // Only refresh if explicitly requested (after server update completes)
+                        
                         if (shouldRefresh) {
                           onRefresh();
                         }
@@ -168,10 +167,10 @@ export default function ItemsBoard({
                 onSelect={() => toggleSelect(item.id)}
                 onUpdate={() => {
                   if (onItemUpdate) {
-                    // Optimistically update the item immediately
+                    
                     onItemUpdate(item.id, { purchased: !item.purchased });
                   }
-                  // Then refresh in background
+                  
                   onRefresh();
                 }}
                 compact
@@ -185,6 +184,3 @@ export default function ItemsBoard({
     </div>
   );
 }
-
-
-

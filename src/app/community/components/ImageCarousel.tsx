@@ -25,46 +25,42 @@ export default function ImageCarousel({
   autoPlay = false,
   autoPlayInterval = 5000,
 }: ImageCarouselProps) {
-  const [currentIndex, setCurrentIndex] = useState(images.length > 1 ? 1 : 0); // Start at 1 for infinite loop
+  const [currentIndex, setCurrentIndex] = useState(images.length > 1 ? 1 : 0); 
   const [isTransitioning, setIsTransitioning] = useState(false);
   const touchStartX = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
   const autoPlayTimer = useRef<NodeJS.Timeout | null>(null);
   const trackRef = useRef<HTMLDivElement>(null);
 
-  // Create infinite loop by duplicating first and last images
-  // Structure: [lastImage, image1, image2, ..., imageN, firstImage]
   const infiniteImages = images.length > 1 
     ? [images[images.length - 1], ...images, images[0]]
     : images;
 
-  // Handle infinite loop - jump to real image when reaching duplicates (seamless transition)
   useEffect(() => {
     if (images.length <= 1 || !trackRef.current) return;
 
     if (currentIndex === 0) {
-      // At duplicate of last image (index 0), jump to real last image (index = images.length)
-      // This happens after the transition completes
+      
       const timeout = setTimeout(() => {
         if (trackRef.current) {
           trackRef.current.style.transition = 'none';
           setCurrentIndex(images.length);
-          // Restore transition after jump
+          
           requestAnimationFrame(() => {
             if (trackRef.current) {
               trackRef.current.style.transition = '';
             }
           });
         }
-      }, 400); // Wait for transition to complete
+      }, 400); 
       return () => clearTimeout(timeout);
     } else if (currentIndex === infiniteImages.length - 1) {
-      // At duplicate of first image (last index), jump to real first image (index 1)
+      
       const timeout = setTimeout(() => {
         if (trackRef.current) {
           trackRef.current.style.transition = 'none';
           setCurrentIndex(1);
-          // Restore transition after jump
+          
           requestAnimationFrame(() => {
             if (trackRef.current) {
               trackRef.current.style.transition = '';
@@ -76,7 +72,6 @@ export default function ImageCarousel({
     }
   }, [currentIndex, images.length, infiniteImages.length]);
 
-  // Auto-play functionality
   useEffect(() => {
     if (autoPlay && images.length > 1) {
       autoPlayTimer.current = setInterval(() => {
@@ -94,7 +89,6 @@ export default function ImageCarousel({
     }
   }, [autoPlay, autoPlayInterval, images.length, infiniteImages.length]);
 
-  // Pause auto-play on hover
   const handleMouseEnter = () => {
     if (autoPlayTimer.current) {
       clearInterval(autoPlayTimer.current);
@@ -125,7 +119,7 @@ export default function ImageCarousel({
 
   const goToIndex = (index: number) => {
     if (isTransitioning || images.length <= 1) return;
-    // Map real index to infinite loop index (add 1 because first is duplicate)
+    
     const infiniteIndex = index + 1;
     if (infiniteIndex === currentIndex) return;
     setIsTransitioning(true);
@@ -133,10 +127,9 @@ export default function ImageCarousel({
     setTimeout(() => setIsTransitioning(false), 400);
   };
 
-  // Touch handlers for swipe gestures
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
-    // Pause auto-play on touch
+    
     if (autoPlayTimer.current) {
       clearInterval(autoPlayTimer.current);
     }
@@ -161,7 +154,6 @@ export default function ImageCarousel({
     touchStartX.current = null;
     touchEndX.current = null;
 
-    // Resume auto-play if enabled
     if (autoPlay && images.length > 1) {
       autoPlayTimer.current = setInterval(() => {
         setCurrentIndex((prev) => {
@@ -172,29 +164,8 @@ export default function ImageCarousel({
     }
   };
 
-  // Keyboard navigation (disabled for now to avoid conflicts with page navigation)
-  // Uncomment if you want keyboard navigation when carousel is focused
-  /*
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft') {
-        goToPrevious();
-      } else if (e.key === 'ArrowRight') {
-        goToNext();
-      }
-    };
-
-    const carouselElement = document.querySelector('.community-image-carousel');
-    if (carouselElement) {
-      window.addEventListener('keydown', handleKeyDown);
-      return () => window.removeEventListener('keydown', handleKeyDown);
-    }
-  }, [images.length]);
-  */
-
   if (images.length === 0) return null;
 
-  // Single image - no carousel needed
   if (images.length === 1) {
     return (
       <div className={`community-image-carousel ${className}`} style={{ width: '100%', height: '100%' }}>
@@ -227,7 +198,7 @@ export default function ImageCarousel({
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Images with smooth transition - infinite loop */}
+        {}
         <div
           ref={trackRef}
           className="community-image-carousel-track"
@@ -238,7 +209,7 @@ export default function ImageCarousel({
           }}
         >
           {infiniteImages.map((image, index) => {
-            // Calculate real image index for alt text
+            
             const realIndex = images.length > 1 
               ? index === 0 
                 ? images.length 
@@ -265,14 +236,14 @@ export default function ImageCarousel({
                   className={`community-image-carousel-image ${imageClassName}`}
                   style={imageClassName?.includes('compact') ? { width: '100%', height: '100%', objectFit: 'cover' } : {}}
                   unoptimized
-                  priority={index === 1} // Priority on first real image
+                  priority={index === 1} 
                 />
               </div>
             );
           })}
         </div>
 
-        {/* Navigation Arrows */}
+        {}
         {showArrows && (
           <>
             <button
@@ -298,7 +269,7 @@ export default function ImageCarousel({
           </>
         )}
 
-        {/* Image Counter */}
+        {}
         <div className="community-image-carousel-counter">
           {images.length > 1 
             ? `${((currentIndex - 1 + images.length) % images.length) + 1} / ${images.length}`
@@ -307,11 +278,11 @@ export default function ImageCarousel({
         </div>
       </div>
 
-      {/* Indicators/Dots */}
+      {}
       {showIndicators && images.length > 1 && (
         <div className="community-image-carousel-indicators">
           {images.map((_, index) => {
-            // Calculate real current index for indicator highlighting
+            
             const realCurrentIndex = images.length > 1 
               ? ((currentIndex - 1 + images.length) % images.length)
               : 0;

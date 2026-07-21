@@ -46,7 +46,6 @@ async function byId(id: string) {
   return j?.meals?.[0] ?? null;
 }
 
-/* media hook */
 function useMedia(query: string) {
   const [matches, setMatches] = useState(false);
   useEffect(() => {
@@ -65,13 +64,12 @@ export default function HomePageClient() {
   const [tab, setTab] = useState<"browse" | "search" | "special">("browse");
   const [showParticleHero, setShowParticleHero] = useState(false);
 
-  // Check if particle hero has been shown in this session
   useEffect(() => {
     if (typeof window !== "undefined") {
       const hasShownHero = sessionStorage.getItem("chefora-particle-hero-shown");
       if (!hasShownHero) {
         setShowParticleHero(true);
-        // Mark as shown in sessionStorage
+        
         sessionStorage.setItem("chefora-particle-hero-shown", "true");
       }
     }
@@ -200,10 +198,10 @@ export default function HomePageClient() {
 
   return (
     <>
-    {/* Morphing particles overlay – does NOT push content down */}
+    {}
     {showParticleHero && <CheforaParticleHero />}
 
-      {/* Original app UI below */}
+      {}
       <div className="bg-base" aria-hidden />
       <div className="bg-anim" aria-hidden>
         <span
@@ -383,7 +381,7 @@ export default function HomePageClient() {
               👨‍🍳 <span style={{ marginLeft: 6 }}>Chef's Special</span>
             </button>
 
-            {/* ⭐ NEW: AI Recipes Link */}
+            {}
             <Link
               href="/ai-recipes"
               className="tab tap-ripple"
@@ -977,15 +975,3 @@ function SkeletonCard() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-

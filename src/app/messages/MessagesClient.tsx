@@ -50,7 +50,7 @@ export default function MessagesClient() {
 
   useEffect(() => {
     fetchConversations();
-    // Poll every 3 seconds for conversations list
+    
     const interval = setInterval(fetchConversations, 3000);
     return () => clearInterval(interval);
   }, []);
@@ -189,4 +189,3 @@ export default function MessagesClient() {
     </div>
   );
 }
-

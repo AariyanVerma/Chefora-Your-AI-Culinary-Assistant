@@ -5,7 +5,6 @@ import { getCurrentUser } from '@/lib/auth';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// GET: Fetch messages for a conversation
 export async function GET(req: Request) {
   try {
     const user = await getCurrentUser();
@@ -20,7 +19,6 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'conversationId is required' }, { status: 400 });
     }
 
-    // Verify user is part of this conversation
     const conversation = await sql`
       SELECT id FROM conversations
       WHERE id = ${conversationId}
@@ -32,7 +30,6 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Conversation not found or access denied' }, { status: 403 });
     }
 
-    // Fetch messages
     const messages = await sql`
       SELECT 
         m.id,
@@ -49,7 +46,6 @@ export async function GET(req: Request) {
       ORDER BY m.created_at ASC;
     `;
 
-    // Mark messages as read (only messages sent by the other user)
     await sql`
       UPDATE messages
       SET is_read = TRUE
@@ -58,7 +54,6 @@ export async function GET(req: Request) {
         AND is_read = FALSE;
     `;
 
-    // Update conversation updated_at
     await sql`
       UPDATE conversations
       SET updated_at = NOW()
@@ -75,7 +70,6 @@ export async function GET(req: Request) {
   }
 }
 
-// POST: Send a new message
 export async function POST(req: Request) {
   console.log('[POST /api/messages/messages] Request received');
   try {
@@ -99,7 +93,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Verify user is part of this conversation
     console.log('[POST /api/messages/messages] Verifying conversation access');
     const conversation = await sql`
       SELECT id FROM conversations
@@ -113,11 +106,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Conversation not found or access denied' }, { status: 403 });
     }
 
-    // Sanitize content (basic XSS prevention)
-    const sanitizedContent = content.trim().slice(0, 5000); // Max 5000 characters
+    const sanitizedContent = content.trim().slice(0, 5000); 
 
     console.log('[POST /api/messages/messages] Inserting message into database');
-    // Insert message
+    
     let result;
     try {
       result = await sql`
@@ -137,7 +129,6 @@ export async function POST(req: Request) {
       throw dbError;
     }
 
-    // Update conversation updated_at
     try {
       await sql`
         UPDATE conversations
@@ -167,4 +158,3 @@ export async function POST(req: Request) {
     );
   }
 }
-

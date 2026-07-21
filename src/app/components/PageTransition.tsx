@@ -11,24 +11,21 @@ export default function PageTransition({ children }: { children: React.ReactNode
   const isInitialMount = useRef(true);
 
   useEffect(() => {
-    // Skip transition on initial mount
+    
     if (isInitialMount.current) {
       isInitialMount.current = false;
       setDisplayChildren(children);
       return;
     }
 
-    // Only trigger transition if pathname actually changed
     if (prevPathnameRef.current !== pathname) {
-      // Start exit animation first
+      
       setTransitionState('exiting');
       
-      // After exit, update content and start enter animation
       const exitTimer = setTimeout(() => {
         setDisplayChildren(children);
         setTransitionState('entering');
         
-        // After enter animation completes, go to idle
         const enterTimer = setTimeout(() => {
           setTransitionState('idle');
         }, 500);
@@ -40,12 +37,11 @@ export default function PageTransition({ children }: { children: React.ReactNode
 
       return () => clearTimeout(exitTimer);
     } else {
-      // Pathname hasn't changed, just update children
+      
       setDisplayChildren(children);
     }
   }, [pathname, children]);
 
-  // Determine class based on transition state
   const getTransitionClass = () => {
     if (transitionState === 'exiting') return 'page-exiting';
     if (transitionState === 'entering') return 'page-entering';
@@ -54,7 +50,7 @@ export default function PageTransition({ children }: { children: React.ReactNode
 
   return (
     <div className={`page-transition-wrapper ${getTransitionClass()}`}>
-      {/* Futuristic Energy Lines */}
+      {}
       {(transitionState === 'exiting' || transitionState === 'entering') && (
         <>
           <div className="energy-line energy-line-1"></div>

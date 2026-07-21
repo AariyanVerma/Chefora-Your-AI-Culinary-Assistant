@@ -116,11 +116,10 @@ export default function CommentCard({ comment, onDelete, currentUserId }: Commen
       {comment.replies && comment.replies.length > 0 && (
         <div className="community-comment-replies" style={{ marginLeft: '40px', marginTop: '12px' }}>
           {comment.replies.map(reply => (
-            <CommentCard key={reply.id} comment={reply} isOwn={false} />
+            <CommentCard key={reply.id} comment={reply} currentUserId={currentUserId} onDelete={onDelete} />
           ))}
         </div>
       )}
     </div>
   );
 }
-

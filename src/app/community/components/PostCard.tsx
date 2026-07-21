@@ -58,7 +58,6 @@ export default function PostCard({ post, currentUserId, compact = false, onDelet
   const isOwner = currentUserId === post.author_id;
   const titleColor = getPostTitleColor(post.id);
 
-  // Poll for updated counts every 1 second when component is visible
   React.useEffect(() => {
     let intervalId: NodeJS.Timeout;
     
@@ -82,17 +81,15 @@ export default function PostCard({ post, currentUserId, compact = false, onDelet
       }
     };
 
-    // Only poll if page is visible
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         updateCounts();
-        intervalId = setInterval(updateCounts, 1000); // Update every 1 second
+        intervalId = setInterval(updateCounts, 1000); 
       } else {
         if (intervalId) clearInterval(intervalId);
       }
     };
 
-    // Initial update and start polling if visible
     if (document.visibilityState === 'visible') {
       updateCounts();
       intervalId = setInterval(updateCounts, 1000);
@@ -110,10 +107,8 @@ export default function PostCard({ post, currentUserId, compact = false, onDelet
     e.preventDefault();
     e.stopPropagation();
     
-    // Mark that user just performed an action
     lastActionTimeRef.current = Date.now();
     
-    // Optimistic update
     const newLikedState = !isLiked;
     setIsLiked(newLikedState);
     setLikeCount(prev => {
@@ -123,13 +118,13 @@ export default function PostCard({ post, currentUserId, compact = false, onDelet
     
     try {
       const result = await toggleLikePost(post.id);
-      // Update with actual count from database
+      
       if (result?.like_count !== undefined) {
         setLikeCount(result.like_count);
         setIsLiked(result.is_liked);
       }
     } catch (error) {
-      // Revert on error
+      
       setIsLiked(!newLikedState);
       setLikeCount(post.like_count);
       console.error('Failed to toggle like:', error);
@@ -170,7 +165,7 @@ export default function PostCard({ post, currentUserId, compact = false, onDelet
   };
 
   const handleShareSuccess = async () => {
-    // Refresh share count after successful share
+    
     try {
       const response = await fetch(`/api/community/post-counts?postIds=${post.id}`);
       if (response.ok) {
@@ -195,7 +190,7 @@ export default function PostCard({ post, currentUserId, compact = false, onDelet
     setDeleting(true);
     try {
       await deletePost(post.id);
-      // Call onDelete callback if provided, otherwise fall back to refresh
+      
       if (onDelete) {
         onDelete(post.id);
       } else {
@@ -208,7 +203,6 @@ export default function PostCard({ post, currentUserId, compact = false, onDelet
     }
   };
 
-  // Close menu when clicking outside
   React.useEffect(() => {
     if (!showMenu) return;
     const handleClickOutside = (e: MouseEvent) => {
@@ -234,7 +228,7 @@ export default function PostCard({ post, currentUserId, compact = false, onDelet
   };
 
   const handleCardClick = (e: React.MouseEvent) => {
-    // Don't navigate if clicking on interactive elements
+    
     const target = e.target as HTMLElement;
     if (
       target.closest('button') ||
@@ -246,7 +240,6 @@ export default function PostCard({ post, currentUserId, compact = false, onDelet
     router.push(`/community/p/${post.id}`);
   };
 
-  // Compact grid view
   if (compact) {
     return (
       <div 
@@ -293,7 +286,7 @@ export default function PostCard({ post, currentUserId, compact = false, onDelet
             />
           </div>
         )}
-        {/* Menu button for edit/delete */}
+        {}
         {isOwner && (
           <div style={{
             position: 'absolute',
@@ -411,7 +404,7 @@ export default function PostCard({ post, currentUserId, compact = false, onDelet
             )}
           </div>
         )}
-        {/* Like and comment count overlay */}
+        {}
         <div style={{
           position: 'absolute',
           bottom: '8px',
@@ -435,7 +428,6 @@ export default function PostCard({ post, currentUserId, compact = false, onDelet
     );
   }
 
-  // Full list view
   return (
     <>
       <div 
@@ -451,7 +443,7 @@ export default function PostCard({ post, currentUserId, compact = false, onDelet
         }}
         onClick={handleCardClick}
       >
-              {/* Header */}
+              {}
               <div className="community-post-header">
                 <Link 
                   href={`/community/u/${post.author_username}`}
@@ -582,7 +574,7 @@ export default function PostCard({ post, currentUserId, compact = false, onDelet
                 </div>
               </div>
 
-              {/* Image Carousel */}
+              {}
               {post.media_urls.length > 0 && (
                 <div className="community-post-image-wrapper" onClick={(e) => e.stopPropagation()}>
                   <ImageCarousel
@@ -594,7 +586,7 @@ export default function PostCard({ post, currentUserId, compact = false, onDelet
                 </div>
               )}
 
-              {/* Content */}
+              {}
               <div className="community-post-content">
                 <h3 className="cardTitle" style={{ marginBottom: '8px', color: titleColor }}>{post.title}</h3>
                 {post.caption && (
@@ -603,7 +595,7 @@ export default function PostCard({ post, currentUserId, compact = false, onDelet
                   </p>
                 )}
 
-                {/* Recipe Tags */}
+                {}
                 {post.recipe && (
                   <div className="chip-row" style={{ marginBottom: '12px', flexWrap: 'wrap', gap: '6px' }}>
                     {post.recipe.difficulty && (
@@ -634,7 +626,7 @@ export default function PostCard({ post, currentUserId, compact = false, onDelet
                 )}
               </div>
 
-              {/* Actions */}
+              {}
               <div className="community-post-actions">
                 <button
                   onClick={handleLike}
@@ -693,4 +685,3 @@ export default function PostCard({ post, currentUserId, compact = false, onDelet
     </>
   );
 }
-

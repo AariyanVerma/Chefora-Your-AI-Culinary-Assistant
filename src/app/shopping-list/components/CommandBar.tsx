@@ -30,12 +30,12 @@ export default function CommandBar({
   const updateFilter = (key: string, value: any) => {
     const newFilters = { ...filters, [key]: value };
     onFiltersChange(newFilters);
-    // Don't update URL to avoid page reload - filters are handled client-side
+    
   };
 
   const updateSort = (value: string) => {
     onSortChange(value);
-    // Don't update URL to avoid page reload - sort is handled client-side
+    
   };
 
   return (
@@ -159,6 +159,3 @@ export default function CommandBar({
     </div>
   );
 }
-
-
-

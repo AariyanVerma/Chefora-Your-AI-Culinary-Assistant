@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 
-// GET handler - provides instructions on how to use the endpoint
 export async function GET(request: NextRequest) {
   return NextResponse.json({
     message: 'This endpoint requires a POST request.',
@@ -22,18 +21,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only allow in development or for admin users
     if (process.env.NODE_ENV === 'production') {
       return NextResponse.json({ error: 'Not available in production' }, { status: 403 });
     }
 
-    // Run the migration SQL
     try {
       await sql`
         CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
       `;
 
-      // Create dashboard_page_visits table
       await sql`
         CREATE TABLE IF NOT EXISTS dashboard_page_visits (
           id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -57,7 +53,6 @@ export async function POST(request: NextRequest) {
         CREATE INDEX IF NOT EXISTS idx_dashboard_page_visits_user_path ON dashboard_page_visits(user_id, path)
       `;
 
-      // Create cleanup function and trigger
       await sql`
         CREATE OR REPLACE FUNCTION cleanup_old_page_visits()
         RETURNS TRIGGER AS $$
@@ -86,7 +81,6 @@ export async function POST(request: NextRequest) {
         EXECUTE FUNCTION cleanup_old_page_visits()
       `;
 
-      // Create dashboard_last_recipe table
       await sql`
         CREATE TABLE IF NOT EXISTS dashboard_last_recipe (
           id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -113,7 +107,7 @@ export async function POST(request: NextRequest) {
         message: 'Dashboard migration completed successfully'
       });
     } catch (error: any) {
-      // Check if it's an "already exists" error (which is fine)
+      
       if (error?.message?.includes('already exists') || error?.message?.includes('duplicate')) {
         return NextResponse.json({ 
           success: true,
@@ -130,7 +124,3 @@ export async function POST(request: NextRequest) {
     }, { status: 500 });
   }
 }
-
-
-
-

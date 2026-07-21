@@ -45,7 +45,6 @@ export default function EditPostForm({ post }: EditPostFormProps) {
     'Oxalate-Free', 'Salicylate-Free', 'Sulfite-Free'
   ];
   
-  // Initialize with base options + any custom ones from the post
   const [availableDietOptions, setAvailableDietOptions] = useState<string[]>(() => {
     const existingDietTags = post.recipe?.diet_tags || [];
     const customTags = existingDietTags.filter(
@@ -61,16 +60,15 @@ export default function EditPostForm({ post }: EditPostFormProps) {
     '#KidFriendly', '#DateNight'
   ];
   
-  // Initialize with base options + any custom ones from the post
   const [availableTagOptions, setAvailableTagOptions] = useState<string[]>(() => {
     const existingTags = post.recipe?.tags || [];
     const customTags = existingTags
       .map(tag => {
-        // Ensure tags have # prefix and no spaces
+        
         let normalizedTag = tag.startsWith('#') ? tag : `#${tag}`;
-        // Remove any spaces (including spaces after #)
+        
         normalizedTag = normalizedTag.replace(/\s+/g, '');
-        // Ensure # is immediately followed by character (no space)
+        
         if (normalizedTag.startsWith('#') && normalizedTag.length > 1 && normalizedTag[1] === ' ') {
           normalizedTag = '#' + normalizedTag.substring(2).replace(/\s+/g, '');
         }
@@ -86,24 +84,22 @@ export default function EditPostForm({ post }: EditPostFormProps) {
     return [...baseTagOptions, ...customTags];
   });
   
-  // Ensure existing tags have # prefix on mount
   useEffect(() => {
     const existingTags = post.recipe?.tags || [];
     if (existingTags.length > 0) {
       const normalizedTags = existingTags.map(tag => 
         tag.startsWith('#') ? tag : `#${tag}`
       );
-      // Only update if tags haven't been modified
+      
       if (JSON.stringify(normalizedTags) !== JSON.stringify(tags)) {
         setTags(normalizedTags);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, []);
   const [newTagInput, setNewTagInput] = useState('#');
   const [tagError, setTagError] = useState('');
   
-  // Categories (separate from tags)
   const [categories, setCategories] = useState<string[]>(post.recipe?.categories || []);
   const [availableCategoryOptions, setAvailableCategoryOptions] = useState<string[]>(() => {
     const baseCategoryOptions = [
@@ -120,7 +116,6 @@ export default function EditPostForm({ post }: EditPostFormProps) {
   const [newCategoryInput, setNewCategoryInput] = useState('');
   const [categoryError, setCategoryError] = useState('');
 
-  // Pebbles wall layout effect for dietary restrictions
   useEffect(() => {
     const container = dietaryChipsRef.current;
     if (!container) return;
@@ -129,24 +124,20 @@ export default function EditPostForm({ post }: EditPostFormProps) {
       const chips = Array.from(container.children) as HTMLElement[];
       if (chips.length === 0) return;
 
-      // Reset all chips to natural width first (measure natural size)
       chips.forEach(chip => {
         chip.style.flex = '0 0 auto';
         chip.style.width = 'auto';
         chip.style.minWidth = 'auto';
       });
 
-      // Force a reflow to get accurate measurements
       void container.offsetHeight;
 
-      // Get container width and gap
       const containerWidth = container.offsetWidth;
       const gap = 8;
       const rows: HTMLElement[][] = [];
       let currentRow: HTMLElement[] = [];
       let currentRowWidth = 0;
 
-      // Group chips into rows based on natural width
       chips.forEach(chip => {
         const chipWidth = chip.offsetWidth;
         const neededWidth = currentRowWidth + chipWidth + (currentRow.length > 0 ? currentRow.length * gap : 0);
@@ -164,7 +155,6 @@ export default function EditPostForm({ post }: EditPostFormProps) {
         rows.push(currentRow);
       }
 
-      // Distribute remaining space in each row
       rows.forEach(row => {
         const naturalWidths = row.map(chip => chip.offsetWidth);
         const totalNaturalWidth = naturalWidths.reduce((sum, w) => sum + w, 0);
@@ -180,7 +170,7 @@ export default function EditPostForm({ post }: EditPostFormProps) {
             chip.style.minWidth = `${naturalWidth}px`;
           });
         } else {
-          // No extra space, keep natural widths
+          
           row.forEach(chip => {
             chip.style.flex = '0 0 auto';
             chip.style.width = 'auto';
@@ -189,10 +179,8 @@ export default function EditPostForm({ post }: EditPostFormProps) {
       });
     };
 
-    // Delay to ensure DOM is ready
     const timeoutId = setTimeout(layoutPebbles, 0);
 
-    // Recalculate on resize
     const resizeObserver = new ResizeObserver(() => {
       setTimeout(layoutPebbles, 0);
     });
@@ -204,7 +192,6 @@ export default function EditPostForm({ post }: EditPostFormProps) {
     };
   }, [dietTags, availableDietOptions]);
 
-  // Pebbles wall layout effect for tags
   useEffect(() => {
     const container = tagsChipsRef.current;
     if (!container) return;
@@ -213,24 +200,20 @@ export default function EditPostForm({ post }: EditPostFormProps) {
       const chips = Array.from(container.children) as HTMLElement[];
       if (chips.length === 0) return;
 
-      // Reset all chips to natural width first (measure natural size)
       chips.forEach(chip => {
         chip.style.flex = '0 0 auto';
         chip.style.width = 'auto';
         chip.style.minWidth = 'auto';
       });
 
-      // Force a reflow to get accurate measurements
       void container.offsetHeight;
 
-      // Get container width and gap
       const containerWidth = container.offsetWidth;
       const gap = 8;
       const rows: HTMLElement[][] = [];
       let currentRow: HTMLElement[] = [];
       let currentRowWidth = 0;
 
-      // Group chips into rows based on natural width
       chips.forEach(chip => {
         const chipWidth = chip.offsetWidth;
         const neededWidth = currentRowWidth + chipWidth + (currentRow.length > 0 ? currentRow.length * gap : 0);
@@ -248,7 +231,6 @@ export default function EditPostForm({ post }: EditPostFormProps) {
         rows.push(currentRow);
       }
 
-      // Distribute remaining space in each row
       rows.forEach(row => {
         const naturalWidths = row.map(chip => chip.offsetWidth);
         const totalNaturalWidth = naturalWidths.reduce((sum, w) => sum + w, 0);
@@ -264,7 +246,7 @@ export default function EditPostForm({ post }: EditPostFormProps) {
             chip.style.minWidth = `${naturalWidth}px`;
           });
         } else {
-          // No extra space, keep natural widths
+          
           row.forEach(chip => {
             chip.style.flex = '0 0 auto';
             chip.style.width = 'auto';
@@ -273,10 +255,8 @@ export default function EditPostForm({ post }: EditPostFormProps) {
       });
     };
 
-    // Delay to ensure DOM is ready
     const timeoutId = setTimeout(layoutPebbles, 0);
 
-    // Recalculate on resize
     const resizeObserver = new ResizeObserver(() => {
       setTimeout(layoutPebbles, 0);
     });
@@ -295,7 +275,6 @@ export default function EditPostForm({ post }: EditPostFormProps) {
       return;
     }
 
-    // Check if already exists (case-insensitive)
     const exists = availableDietOptions.some(
       diet => diet.toLowerCase() === trimmedInput.toLowerCase()
     );
@@ -305,11 +284,10 @@ export default function EditPostForm({ post }: EditPostFormProps) {
       return;
     }
 
-    // Add to available options
     setAvailableDietOptions([...availableDietOptions, trimmedInput]);
-    // Also add it to selected tags
+    
     setDietTags([...dietTags, trimmedInput]);
-    // Clear input and error
+    
     setNewDietInput('');
     setDietError('');
   };
@@ -322,7 +300,7 @@ export default function EditPostForm({ post }: EditPostFormProps) {
   };
 
   const handleAddTag = () => {
-    // Get value without leading # for validation
+    
     let tagValue = newTagInput.replace(/^#+/, '').trim();
     
     if (!tagValue) {
@@ -330,17 +308,14 @@ export default function EditPostForm({ post }: EditPostFormProps) {
       return;
     }
 
-    // Remove all spaces - tags cannot have spaces
     const normalizedTag = tagValue.replace(/\s+/g, '');
     if (normalizedTag !== tagValue) {
       setTagError('Tags cannot contain spaces');
       return;
     }
 
-    // Ensure tag starts with # (no space after #)
     const tagWithHash = `#${normalizedTag}`;
 
-    // Check if already exists (case-insensitive, compare without #)
     const exists = availableTagOptions.some(
       tag => tag.replace(/^#+/, '').toLowerCase() === normalizedTag.toLowerCase()
     );
@@ -350,11 +325,10 @@ export default function EditPostForm({ post }: EditPostFormProps) {
       return;
     }
 
-    // Add to available options
     setAvailableTagOptions([...availableTagOptions, tagWithHash]);
-    // Also add it to selected tags
+    
     setTags([...tags, tagWithHash]);
-    // Clear input and error, reset to #
+    
     setNewTagInput('#');
     setTagError('');
   };
@@ -362,12 +336,10 @@ export default function EditPostForm({ post }: EditPostFormProps) {
   const handleTagInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value;
     
-    // Ensure # is always at the start (no space after #)
     if (!value.startsWith('#')) {
       value = '#' + value.replace(/^#+/g, '').trim();
     }
     
-    // Remove all spaces (including after #)
     value = value.replace(/\s+/g, '');
     
     setNewTagInput(value);
@@ -379,7 +351,7 @@ export default function EditPostForm({ post }: EditPostFormProps) {
       e.preventDefault();
       handleAddTag();
     }
-    // Prevent space key
+    
     if (e.key === ' ') {
       e.preventDefault();
     }
@@ -392,7 +364,6 @@ export default function EditPostForm({ post }: EditPostFormProps) {
       return;
     }
 
-    // Check if already exists (case-insensitive)
     const exists = availableCategoryOptions.some(
       cat => cat.toLowerCase() === trimmedInput.toLowerCase()
     );
@@ -402,11 +373,10 @@ export default function EditPostForm({ post }: EditPostFormProps) {
       return;
     }
 
-    // Add to available options
     setAvailableCategoryOptions([...availableCategoryOptions, trimmedInput]);
-    // Also add it to selected categories
+    
     setCategories([...categories, trimmedInput]);
-    // Clear input and error
+    
     setNewCategoryInput('');
     setCategoryError('');
   };
@@ -532,7 +502,7 @@ export default function EditPostForm({ post }: EditPostFormProps) {
         alignItems: 'center',
         textAlign: 'center'
       }}>
-            {/* Title */}
+            {}
             <div className="community-form-section" style={{ width: '100%', maxWidth: '600px' }}>
               <label className="community-form-label">Title *</label>
               <input
@@ -545,7 +515,7 @@ export default function EditPostForm({ post }: EditPostFormProps) {
               />
             </div>
 
-            {/* Caption */}
+            {}
             <div className="community-form-section" style={{ width: '100%', maxWidth: '600px' }}>
               <label className="community-form-label">Caption</label>
               <textarea
@@ -558,7 +528,7 @@ export default function EditPostForm({ post }: EditPostFormProps) {
               />
             </div>
 
-            {/* Images */}
+            {}
             <div className="community-form-section" style={{ width: '100%', maxWidth: '600px' }}>
               <label className="community-form-label">Images *</label>
               <div className="community-image-upload" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '12px' }}>
@@ -597,7 +567,7 @@ export default function EditPostForm({ post }: EditPostFormProps) {
               </div>
             </div>
 
-            {/* Visibility */}
+            {}
             <div className="community-form-section" style={{ width: '100%', maxWidth: '600px' }}>
               <label className="community-form-label">Visibility</label>
               <div className="chip-row" style={{ gap: '8px', justifyContent: 'center' }}>
@@ -625,13 +595,13 @@ export default function EditPostForm({ post }: EditPostFormProps) {
               </div>
             </div>
 
-            {/* Recipe Details */}
+            {}
             <div className="community-form-section" style={{ width: '100%', maxWidth: '600px' }}>
               <h3 className="cardTitle" style={{ fontSize: 'var(--fs-md)', marginBottom: '12px' }}>
                 Recipe Details (Optional)
               </h3>
 
-              {/* Basic Info */}
+              {}
               <div className="community-form-row" style={{ justifyContent: 'center' }}>
                 <div className="community-form-field">
                   <label className="community-form-label">Servings</label>
@@ -691,7 +661,7 @@ export default function EditPostForm({ post }: EditPostFormProps) {
                 </div>
               </div>
 
-              {/* Ingredients */}
+              {}
               <div className="community-form-section" style={{ marginTop: '16px' }}>
                 <label className="community-form-label">Ingredients</label>
                 {ingredients.map((ingredient, index) => (
@@ -726,7 +696,7 @@ export default function EditPostForm({ post }: EditPostFormProps) {
                 </button>
               </div>
 
-              {/* Instructions */}
+              {}
               <div className="community-form-section" style={{ marginTop: '16px' }}>
                 <label className="community-form-label">Instructions</label>
                 {instructions.map((instruction, index) => (
@@ -761,7 +731,7 @@ export default function EditPostForm({ post }: EditPostFormProps) {
                 </button>
               </div>
 
-              {/* Dietary Restrictions */}
+              {}
               <div className="community-form-section" style={{ marginTop: '16px' }}>
                 <label className="community-form-label">Dietary Restrictions</label>
                 <div ref={dietaryChipsRef} className="chip-row dietary-restrictions-chips">
@@ -783,7 +753,7 @@ export default function EditPostForm({ post }: EditPostFormProps) {
                   ))}
                 </div>
                 
-                {/* Add New Dietary Preference */}
+                {}
                 <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                     <input
@@ -823,7 +793,7 @@ export default function EditPostForm({ post }: EditPostFormProps) {
                 </div>
               </div>
 
-              {/* Categories */}
+              {}
               <div className="community-form-section" style={{ marginTop: '16px' }}>
                 <label className="community-form-label">Categories</label>
                 <div ref={categoryChipsRef} className="chip-row dietary-restrictions-chips">
@@ -845,7 +815,7 @@ export default function EditPostForm({ post }: EditPostFormProps) {
                   ))}
                 </div>
                 
-                {/* Add New Category */}
+                {}
                 <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                     <input
@@ -885,7 +855,7 @@ export default function EditPostForm({ post }: EditPostFormProps) {
                 </div>
               </div>
 
-              {/* Tags */}
+              {}
               <div className="community-form-section" style={{ marginTop: '16px' }}>
                 <label className="community-form-label">Tags</label>
                 <div ref={tagsChipsRef} className="chip-row dietary-restrictions-chips">
@@ -907,7 +877,7 @@ export default function EditPostForm({ post }: EditPostFormProps) {
                   ))}
                 </div>
                 
-                {/* Add New Tag */}
+                {}
                 <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                     <input
@@ -945,7 +915,7 @@ export default function EditPostForm({ post }: EditPostFormProps) {
               </div>
             </div>
 
-            {/* Submit */}
+            {}
             <div className="toolbar" style={{ marginTop: '24px', justifyContent: 'center', width: '100%' }}>
               <button
                 type="submit"

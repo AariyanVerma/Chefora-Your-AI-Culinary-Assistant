@@ -1,4 +1,4 @@
-// app/api/onboarding/route.ts
+
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
@@ -21,12 +21,10 @@ export async function POST(req: Request) {
       persona,
     } = body;
 
-    // Make sure arrays are always arrays (not undefined)
     const allergiesArr = Array.isArray(allergies) ? allergies : [];
     const toolsArr = Array.isArray(kitchenTools) ? kitchenTools : [];
     const cuisinesArr = Array.isArray(favoriteCuisines) ? favoriteCuisines : [];
 
-    // Upsert profile
     await sql`
   INSERT INTO user_profiles (
     user_id,

@@ -63,4 +63,3 @@ export default function FilteredResults({ items }: FilteredResultsProps) {
     </div>
   );
 }
-

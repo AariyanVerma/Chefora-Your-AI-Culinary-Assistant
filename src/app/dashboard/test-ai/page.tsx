@@ -123,7 +123,7 @@ export default function TestAIPage() {
       </div>
 
       <div className="container" style={{ padding: 'clamp(20px, 4vw, 40px)', maxWidth: '1200px', margin: '0 auto' }}>
-        {/* Header */}
+        {}
         <div style={{ marginBottom: '2rem' }}>
           <Link 
             href="/dashboard" 
@@ -146,9 +146,9 @@ export default function TestAIPage() {
           </p>
         </div>
 
-        {/* Main Card Container */}
+        {}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-          {/* Groq Card */}
+          {}
           <div className="card-wrapper dashboard-stat-card">
             <div className="card-background"></div>
             <div className="glass card card-mount">
@@ -224,7 +224,7 @@ export default function TestAIPage() {
             </div>
           </div>
 
-          {/* Gemini Card */}
+          {}
           <div className="card-wrapper dashboard-stat-card">
             <div className="card-background"></div>
             <div className="glass card card-mount">
@@ -317,7 +317,7 @@ export default function TestAIPage() {
           </div>
         </div>
 
-        {/* Instructions Card */}
+        {}
         {results.instructions && (
           <div className="card-wrapper" style={{ maxWidth: '800px', margin: '0 auto' }}>
             <div className="card-background"></div>
@@ -335,7 +335,7 @@ export default function TestAIPage() {
           </div>
         )}
 
-        {/* Summary Card */}
+        {}
         <div className="card-wrapper" style={{ maxWidth: '800px', margin: '2rem auto 0' }}>
           <div className="card-background"></div>
           <div className="glass card card-mount">
@@ -395,7 +395,3 @@ export default function TestAIPage() {
     </div>
   );
 }
-
-
-
-

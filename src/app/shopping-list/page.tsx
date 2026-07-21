@@ -4,7 +4,6 @@ import { redirect } from 'next/navigation';
 import DashboardLayout from '../components/DashboardLayout';
 import ShoppingListShell from './components/ShoppingListShell';
 
-// Force dynamic rendering
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
@@ -17,12 +16,10 @@ export default async function ShoppingListPage({
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  // Await searchParams if it's a Promise (Next.js 16+)
   const resolvedSearchParams = searchParams instanceof Promise ? await searchParams : searchParams;
 
   const listId = typeof resolvedSearchParams.list === 'string' ? resolvedSearchParams.list : undefined;
 
-  // Fetch lists and selected list data
   let lists, selectedList, items;
 
   try {
@@ -43,7 +40,6 @@ export default async function ShoppingListPage({
       ) : Promise.resolve([]),
     ]);
 
-    // If no list selected but lists exist, select the first one
     if (!listId && lists.length > 0 && !selectedList) {
       selectedList = await getShoppingList(lists[0].id);
       if (selectedList) {
@@ -51,7 +47,7 @@ export default async function ShoppingListPage({
       }
     }
   } catch (error: any) {
-    // Check if it's a table missing error
+    
     if (error?.message?.includes('does not exist') || error?.message?.includes('relation')) {
       return (
         <DashboardLayout>
@@ -78,7 +74,7 @@ export default async function ShoppingListPage({
         </DashboardLayout>
       );
     }
-    // Re-throw other errors
+    
     throw error;
   }
 
@@ -92,6 +88,3 @@ export default async function ShoppingListPage({
     </DashboardLayout>
   );
 }
-
-
-

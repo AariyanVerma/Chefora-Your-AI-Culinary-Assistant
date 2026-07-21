@@ -3,7 +3,7 @@ import { sql } from '@/lib/db';
 
 export async function GET() {
   try {
-    // Create conversations table
+    
     await sql`
       CREATE TABLE IF NOT EXISTS conversations (
         id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -16,7 +16,6 @@ export async function GET() {
       );
     `;
 
-    // Create messages table
     await sql`
       CREATE TABLE IF NOT EXISTS messages (
         id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -29,7 +28,6 @@ export async function GET() {
       );
     `;
 
-    // Create indexes for better performance
     await sql`
       CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);
     `;
@@ -55,9 +53,3 @@ export async function GET() {
     );
   }
 }
-
-
-
-
-
-

@@ -24,8 +24,7 @@ export async function GET(request: Request) {
     }
 
     try {
-      // Build search query for product price lookup
-      // Try multiple query variations to find the best price match
+      
       const queryVariations = [
         `${productName}${store ? ` ${store}` : ''}${unit ? ` ${quantity} ${unit}` : ''} price`,
         `${productName}${unit ? ` ${quantity} ${unit}` : ''} buy online price${store ? ` ${store}` : ''}`,
@@ -35,7 +34,6 @@ export async function GET(request: Request) {
       const prices: number[] = [];
       const allItems: any[] = [];
 
-      // Try each query variation
       for (const searchQuery of queryVariations) {
         try {
           const params = new URLSearchParams({
@@ -48,8 +46,8 @@ export async function GET(request: Request) {
 
           const url = `https://www.googleapis.com/customsearch/v1?${params.toString()}`;
           const response = await fetch(url, {
-            signal: AbortSignal.timeout(5000), // 5 second timeout
-            next: { revalidate: 1800 } // Cache for 30 minutes
+            signal: AbortSignal.timeout(5000), 
+            next: { revalidate: 1800 } 
           });
 
           if (response.ok) {
@@ -59,33 +57,29 @@ export async function GET(request: Request) {
             }
           }
         } catch (queryError) {
-          // Continue to next query variation
+          
           console.log(`Query "${searchQuery}" failed, trying next variation`);
         }
       }
 
-      // Extract prices from all collected results
       const pricePattern = /\$[\d,]+(?:\.\d{2})?/g;
       const priceRegex = /\$?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/g;
 
       allItems.forEach((item: any) => {
         const text = `${item.title || ''} ${item.snippet || ''} ${item.displayLink || ''}`.toLowerCase();
         
-        // Skip if this looks like a recipe or unrelated content
         if (text.includes('recipe') || text.includes('how to') || text.includes('cooking')) {
           return;
         }
 
-        // Try to find prices in the text
         const matches = [...text.matchAll(priceRegex)];
         
         matches.forEach((match) => {
           const priceStr = match[1].replace(/,/g, '');
           const numericValue = parseFloat(priceStr);
           
-          // Filter reasonable price ranges (between $0.01 and $1000)
           if (!isNaN(numericValue) && numericValue >= 0.01 && numericValue <= 1000) {
-            // Additional validation: check if context suggests this is a product price
+            
             const context = text.substring(Math.max(0, match.index! - 20), Math.min(text.length, match.index! + 20));
             const priceKeywords = ['price', 'cost', '$', 'buy', 'purchase', 'add to cart', 'order'];
             
@@ -96,9 +90,8 @@ export async function GET(request: Request) {
         });
       });
 
-      // If we found prices, return the median (more robust than average)
       if (prices.length > 0) {
-        // Remove outliers using IQR method
+        
         const sortedPrices = [...prices].sort((a, b) => a - b);
         const q1 = sortedPrices[Math.floor(sortedPrices.length * 0.25)];
         const q3 = sortedPrices[Math.floor(sortedPrices.length * 0.75)];
@@ -112,7 +105,7 @@ export async function GET(request: Request) {
           const medianPrice = filteredPrices[Math.floor(filteredPrices.length / 2)];
           
           return NextResponse.json({ 
-            price: Math.round(medianPrice * 100) / 100, // Round to 2 decimal places
+            price: Math.round(medianPrice * 100) / 100, 
             source: 'google_search',
             confidence: filteredPrices.length >= 5 ? 'high' : filteredPrices.length >= 2 ? 'medium' : 'low',
             priceRange: {
@@ -123,7 +116,6 @@ export async function GET(request: Request) {
         }
       }
 
-      // No prices found
       return NextResponse.json(
         { error: 'Could not find price information for this product. Please enter a price manually.' },
         { status: 404 }

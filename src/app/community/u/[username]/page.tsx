@@ -29,7 +29,7 @@ export default async function UserProfilePage({
   if (activeTab === 'posts') {
     posts = await getPostsByUser(profile.user_id, user.id);
   } else if (activeTab === 'saved') {
-    // Only show saved posts if viewing your own profile
+    
     if (profile.user_id === user.id) {
       posts = await getSavedPosts(profile.user_id, user.id);
     }
@@ -41,4 +41,3 @@ export default async function UserProfilePage({
     </DashboardLayout>
   );
 }
-

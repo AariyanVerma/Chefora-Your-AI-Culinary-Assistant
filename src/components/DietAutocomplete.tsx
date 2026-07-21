@@ -44,23 +44,21 @@ export default function DietAutocomplete({ value, onChange }: Props) {
   const [suggestions, setSuggestions] = useState<DietSuggestion[]>([]);
   const [open, setOpen] = useState(false);
 
-  // keep in sync when parent changes value
   useEffect(() => {
     setInputValue(value || "");
   }, [value]);
 
-  // filter list whenever user types
   useEffect(() => {
     const q = (inputValue || "").trim().toLowerCase();
 
     let base = DIET_OPTIONS;
 
     if (q.length > 0) {
-      // prefix match first
+      
       base = DIET_OPTIONS.filter((diet) =>
         diet.toLowerCase().startsWith(q)
       );
-      // fallback: any substring
+      
       if (base.length === 0) {
         base = DIET_OPTIONS.filter((diet) =>
           diet.toLowerCase().includes(q)
@@ -91,7 +89,7 @@ export default function DietAutocomplete({ value, onChange }: Props) {
     if (e.key === "Enter") {
       e.preventDefault();
       if (suggestions.length > 0) {
-        // pick top suggestion
+        
         selectDiet(suggestions[0].name);
       } else {
         const q = inputValue.trim().toLowerCase();
@@ -101,7 +99,7 @@ export default function DietAutocomplete({ value, onChange }: Props) {
         if (match) {
           selectDiet(match);
         } else {
-          // fall back to "no preference"
+          
           selectDiet("Any / No preference");
         }
       }
@@ -109,7 +107,7 @@ export default function DietAutocomplete({ value, onChange }: Props) {
   };
 
   return (
-    // 👇 exact same wrapper as CuisineAutocomplete
+    
     <div className="field-autocomplete">
       <input
         className="input field-input"
@@ -126,7 +124,7 @@ export default function DietAutocomplete({ value, onChange }: Props) {
       />
 
       {open && suggestions.length > 0 && (
-        // 👇 same dropdown / option classes as cuisine
+        
         <div className="field-dropdown">
           {suggestions.map((s) => (
             <button
@@ -134,7 +132,7 @@ export default function DietAutocomplete({ value, onChange }: Props) {
               type="button"
               className="field-option"
               onMouseDown={(e) => {
-                e.preventDefault(); // avoid blur-before-click
+                e.preventDefault(); 
                 selectDiet(s.name);
               }}
             >

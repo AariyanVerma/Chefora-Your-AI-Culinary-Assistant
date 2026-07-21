@@ -90,7 +90,7 @@ export default function ListModals({ showCreate, editingListId, onClose, onSucce
 
   const modalContent = (
     <>
-      {/* Backdrop */}
+      {}
       <div 
         style={{
           position: 'fixed',
@@ -104,7 +104,7 @@ export default function ListModals({ showCreate, editingListId, onClose, onSucce
         }}
         onClick={onClose}
       />
-      {/* Modal */}
+      {}
       <div className="shopping-modal" onClick={(e) => e.stopPropagation()}>
         <div className="shopping-modal-header">
           <h2>{editingListId ? 'Edit List' : 'Create New List'}</h2>
@@ -183,6 +183,3 @@ export default function ListModals({ showCreate, editingListId, onClose, onSucce
 
   return createPortal(modalContent, document.body);
 }
-
-
-

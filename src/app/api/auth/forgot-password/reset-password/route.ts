@@ -19,7 +19,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 });
     }
 
-    // Find valid reset token
     const tokenResult = await sql<{
       user_id: string;
       email: string;
@@ -41,17 +40,14 @@ export async function POST(req: Request) {
 
     const { user_id, email } = tokenResult.rows[0];
 
-    // Hash new password
     const passwordHash = await hashPassword(newPassword);
 
-    // Update user password
     await sql`
       UPDATE users
       SET password_hash = ${passwordHash}, updated_at = NOW()
       WHERE id = ${user_id}
     `;
 
-    // Invalidate all reset tokens for this user
     await sql`
       UPDATE password_reset_codes
       SET used = TRUE
@@ -71,7 +67,3 @@ export async function POST(req: Request) {
     );
   }
 }
-
-
-
-

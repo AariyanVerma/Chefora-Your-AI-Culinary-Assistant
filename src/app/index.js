@@ -7,22 +7,19 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// SPOONACULAR SETUP
 const SPOON_KEY = process.env.SPOONACULAR_API_KEY;
 const spoon = axios.create({
   baseURL: 'https://api.spoonacular.com',
   params: { apiKey: SPOON_KEY }
 });
 
-// SIMPLE IN-MEMORY DATA (real recipes come from Spoonacular)
-let favorites = [];   // { userId, recipeId, title, imageUrl, estimatedTimeMinutes, favoritedAt }
-let mealPlans = [];   // { mealPlanId, userId, startDate, endDate, meals[], createdAt }
+let favorites = [];   
+let mealPlans = [];   
 
 function generateId(prefix) {
   return `${prefix}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 }
 
-// helper: map Spoonacular "information" object into our recipe shape
 function mapSpoonRecipe(info) {
   const ingredients = (info.extendedIngredients || []).map(i => ({
     name: i.name,
@@ -42,7 +39,7 @@ function mapSpoonRecipe(info) {
     steps,
     estimatedTimeMinutes: info.readyInMinutes || null,
     servings: info.servings || null,
-    nutrition: null, // you can map nutrition.nutrients if you want
+    nutrition: null, 
     imageUrl: info.image || null,
     diet: (info.diets && info.diets[0]) || null,
     rating: null,
@@ -50,10 +47,6 @@ function mapSpoonRecipe(info) {
   };
 }
 
-/**
- * 1) AI RECIPE SUGGESTION
- * POST /api/recipes/ai-suggest
- */
 app.post('/api/recipes/ai-suggest', async (req, res) => {
   const { ingredients, diet, cuisine, maxTimeMinutes, servings, mood } = req.body || {};
 
@@ -79,7 +72,6 @@ app.post('/api/recipes/ai-suggest', async (req, res) => {
 
     const base = response.data.results[0];
 
-    // Get full information (including steps, ingredients)
     const infoResp = await spoon.get(`/recipes/${base.id}/information`, {
       params: { includeNutrition: false }
     });
@@ -94,10 +86,6 @@ app.post('/api/recipes/ai-suggest', async (req, res) => {
   }
 });
 
-/**
- * 2) SEARCH RECIPES
- * GET /api/recipes/search?q=&diet=&maxTimeMinutes=&page=&pageSize=
- */
 app.get('/api/recipes/search', async (req, res) => {
   const { q, diet, maxTimeMinutes, page = 1, pageSize = 10 } = req.query;
 
@@ -137,10 +125,6 @@ app.get('/api/recipes/search', async (req, res) => {
   }
 });
 
-/**
- * 3) GET RECIPE DETAILS
- * GET /api/recipes/:recipeId
- */
 app.get('/api/recipes/:recipeId', async (req, res) => {
   const { recipeId } = req.params;
 
@@ -160,11 +144,6 @@ app.get('/api/recipes/:recipeId', async (req, res) => {
   }
 });
 
-/**
- * 4) ADD RECIPE TO FAVORITES
- * POST /api/users/:userId/favorites
- * body: { recipeId }
- */
 app.post('/api/users/:userId/favorites', async (req, res) => {
   const { userId } = req.params;
   const { recipeId } = req.body || {};
@@ -204,10 +183,6 @@ app.post('/api/users/:userId/favorites', async (req, res) => {
   }
 });
 
-/**
- * 5) GET USER FAVORITES
- * GET /api/users/:userId/favorites?page=&pageSize=
- */
 app.get('/api/users/:userId/favorites', (req, res) => {
   const { userId } = req.params;
   const { page = 1, pageSize = 10 } = req.query;
@@ -229,11 +204,6 @@ app.get('/api/users/:userId/favorites', (req, res) => {
   });
 });
 
-/**
- * 6) CREATE MEAL PLAN
- * POST /api/users/:userId/meal-plans
- * body: { startDate, endDate, meals: [{date, timeOfDay, recipeId}] }
- */
 app.post('/api/users/:userId/meal-plans', async (req, res) => {
   const { userId } = req.params;
   const { startDate, endDate, meals } = req.body || {};
@@ -244,14 +214,12 @@ app.post('/api/users/:userId/meal-plans', async (req, res) => {
 
   const mealPlanId = generateId('mp');
 
-  // optional: validate that recipeIds exist in Spoonacular (skip for now to save quota)
-
   const mealPlan = {
     mealPlanId,
     userId,
     startDate,
     endDate,
-    meals, // keep as { date, timeOfDay, recipeId }
+    meals, 
     createdAt: new Date().toISOString()
   };
 
@@ -259,10 +227,6 @@ app.post('/api/users/:userId/meal-plans', async (req, res) => {
   res.status(201).json(mealPlan);
 });
 
-/**
- * 7) GET MEAL PLAN FOR A SINGLE DAY
- * GET /api/users/:userId/meal-plans?date=YYYY-MM-DD
- */
 app.get('/api/users/:userId/meal-plans', async (req, res) => {
   const { userId } = req.params;
   const { date } = req.query;
@@ -285,7 +249,6 @@ app.get('/api/users/:userId/meal-plans', async (req, res) => {
     });
   });
 
-  // fill in title + image by calling Spoonacular
   const enriched = [];
   for (const meal of mealsForDate) {
     try {
@@ -318,5 +281,5 @@ app.get('/api/users/:userId/meal-plans', async (req, res) => {
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
-  console.log(`Chefora API (Spoonacular) running on http://localhost:${PORT}`);
+  console.log(`Chefora API (Spoonacular) running on http:
 });

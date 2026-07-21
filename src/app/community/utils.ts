@@ -1,39 +1,34 @@
-/**
- * Generate a consistent random saturated color for each post based on its ID.
- * Colors are chosen to contrast well with dark backgrounds.
- */
+
 export function getPostTitleColor(postId: string): string {
-  // Saturated, vibrant colors that contrast well with dark backgrounds
+  
   const vibrantColors = [
-    '#67e8f9', // Cyan
-    '#f472b6', // Pink
-    '#fbbf24', // Amber/Yellow
-    '#10b981', // Emerald/Green
-    '#f97316', // Orange
-    '#a855f7', // Purple
-    '#3b82f6', // Blue
-    '#ef4444', // Red
-    '#06b6d4', // Cyan-500
-    '#ec4899', // Pink-500
-    '#f59e0b', // Amber-500
-    '#14b8a6', // Teal
-    '#8b5cf6', // Violet
-    '#6366f1', // Indigo
-    '#22d3ee', // Sky
-    '#fb7185', // Rose
-    '#34d399', // Emerald-400
-    '#fbbf24', // Amber-400
-    '#60a5fa', // Blue-400
-    '#a78bfa', // Violet-400
+    '#67e8f9', 
+    '#f472b6', 
+    '#fbbf24', 
+    '#10b981', 
+    '#f97316', 
+    '#a855f7', 
+    '#3b82f6', 
+    '#ef4444', 
+    '#06b6d4', 
+    '#ec4899', 
+    '#f59e0b', 
+    '#14b8a6', 
+    '#8b5cf6', 
+    '#6366f1', 
+    '#22d3ee', 
+    '#fb7185', 
+    '#34d399', 
+    '#fbbf24', 
+    '#60a5fa', 
+    '#a78bfa', 
   ];
 
-  // Simple hash function to convert postId to a number
   let hash = 0;
   for (let i = 0; i < postId.length; i++) {
     hash = postId.charCodeAt(i) + ((hash << 5) - hash);
   }
   
-  // Use absolute value and modulo to get index
   const index = Math.abs(hash) % vibrantColors.length;
   return vibrantColors[index];
 }

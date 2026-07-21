@@ -9,7 +9,6 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Execute migration statements one by one
     await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
 
     await sql`
@@ -48,7 +47,6 @@ export async function GET() {
       )
     `;
 
-    // Add image_url column if it doesn't exist (for existing tables)
     await sql`
       DO $$ 
       BEGIN 
@@ -61,7 +59,6 @@ export async function GET() {
       END $$;
     `;
 
-    // Create indexes
     await sql`CREATE INDEX IF NOT EXISTS idx_shopping_lists_user_id ON shopping_lists(user_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_shopping_lists_user_archived ON shopping_lists(user_id, archived)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_shopping_items_list_id ON shopping_items(list_id)`;
@@ -84,6 +81,3 @@ export async function GET() {
     );
   }
 }
-
-
-

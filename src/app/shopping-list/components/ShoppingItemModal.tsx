@@ -84,7 +84,6 @@ const UNIT_GROUPS = {
   'Food-Specific': ['slice', 'serving', 'portion', 'bunch', 'head', 'clove', 'stalk', 'sprig', 'leaf', 'strip']
 };
 
-// Flatten for default value check
 const UNITS = Object.values(UNIT_GROUPS).flat();
 
 interface ShoppingItemModalProps {
@@ -266,10 +265,10 @@ export default function ShoppingItemModal({ item, listId, onClose }: ShoppingIte
   };
 
   useEffect(() => {
-    // Add body class when modal opens
+    
     document.body.classList.add('shopping-modal-open');
     return () => {
-      // Remove body class when modal closes
+      
       document.body.classList.remove('shopping-modal-open');
     };
   }, []);
@@ -278,7 +277,7 @@ export default function ShoppingItemModal({ item, listId, onClose }: ShoppingIte
 
   const modalContent = (
     <>
-      {/* Backdrop */}
+      {}
       <div 
         style={{
           position: 'fixed',
@@ -292,7 +291,7 @@ export default function ShoppingItemModal({ item, listId, onClose }: ShoppingIte
         }}
         onClick={onClose}
       />
-      {/* Modal */}
+      {}
       <div className="shopping-modal shopping-item-modal" onClick={(e) => e.stopPropagation()}>
         <div className="shopping-modal-header">
           <h2>{item ? 'Edit Item' : 'Add New Item'}</h2>
@@ -625,6 +624,3 @@ export default function ShoppingItemModal({ item, listId, onClose }: ShoppingIte
 
   return createPortal(modalContent, document.body);
 }
-
-
-

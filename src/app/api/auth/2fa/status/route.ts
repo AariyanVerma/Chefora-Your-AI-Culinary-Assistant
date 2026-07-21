@@ -2,10 +2,6 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { is2FAEnabled } from '@/lib/2fa';
 
-/**
- * GET /api/auth/2fa/status
- * Check if 2FA is enabled for the current user
- */
 export async function GET() {
   try {
     const user = await getCurrentUser();
@@ -27,7 +23,3 @@ export async function GET() {
     );
   }
 }
-
-
-
-

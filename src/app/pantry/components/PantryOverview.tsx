@@ -75,4 +75,3 @@ export default function PantryOverview({ stats }: PantryOverviewProps) {
     </div>
   );
 }
-

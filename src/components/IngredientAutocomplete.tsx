@@ -10,14 +10,10 @@ type IngredientSuggestion = {
 };
 
 type Props = {
-  value: string[];                 // selected ingredients as tags
+  value: string[];                 
   onChange: (next: string[]) => void;
 };
 
-// ---- helper to call Spoonacular directly ----
-// If you already use a backend endpoint, just change the URL in fetchSuggestions().
-// Call our own backend instead of Spoonacular directly
-// Call our own backend instead of Spoonacular directly
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
 
@@ -31,12 +27,12 @@ async function fetchSuggestions(query: string): Promise<IngredientSuggestion[]> 
     if (raw.startsWith("http://") || raw.startsWith("https://")) {
       return raw;
     }
-    // assume Spoonacular-style filename like "apple.jpg"
+    
     return `https://spoonacular.com/cdn/ingredients_100x100/${raw}`;
   };
 
   try {
-    // 1) Try our backend first
+    
     const url = `${API_BASE}/api/ingredients/autocomplete?q=${encodeURIComponent(
       query
     )}`;
@@ -62,7 +58,6 @@ async function fetchSuggestions(query: string): Promise<IngredientSuggestion[]> 
       );
     }
 
-    // 2) Fallback: call Spoonacular directly if backend gave no images
     if (!SPOON_KEY) {
       console.warn(
         "[IngredientAutocomplete] Missing NEXT_PUBLIC_SPOONACULAR_API_KEY; cannot fetch images."
@@ -70,7 +65,7 @@ async function fetchSuggestions(query: string): Promise<IngredientSuggestion[]> 
       return [];
     }
 
-    const spoonUrl = `https://api.spoonacular.com/food/ingredients/autocomplete?apiKey=${SPOON_KEY}&number=10&metaInformation=true&query=${encodeURIComponent(
+    const spoonUrl = `https:
       query.trim()
     )}`;
     const spoonRes = await fetch(spoonUrl);
@@ -95,18 +90,12 @@ async function fetchSuggestions(query: string): Promise<IngredientSuggestion[]> 
   }
 }
 
-
-
-
 export default function IngredientAutocomplete({ value, onChange }: Props) {
   const [inputValue, setInputValue] = useState("");
   const [suggestions, setSuggestions] = useState<IngredientSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
 
-  // ──────────────────────────────────────
-  // Fetch suggestions (debounced)
-  // ──────────────────────────────────────
   useEffect(() => {
     const q = inputValue.trim();
     if (q.length < 2) {
@@ -132,7 +121,7 @@ export default function IngredientAutocomplete({ value, onChange }: Props) {
       } finally {
         if (!cancelled) setLoading(false);
       }
-    }, 250); // debounce
+    }, 250); 
 
     return () => {
       cancelled = true;
@@ -140,9 +129,6 @@ export default function IngredientAutocomplete({ value, onChange }: Props) {
     };
   }, [inputValue]);
 
-  // ──────────────────────────────────────
-  // Tag helpers
-  // ──────────────────────────────────────
   const addIngredient = (label: string) => {
     const clean = label.trim();
     if (!clean) return;
@@ -172,19 +158,16 @@ export default function IngredientAutocomplete({ value, onChange }: Props) {
         addIngredient(inputValue);
       }
     } else if (e.key === "Backspace" && !inputValue) {
-      // remove last tag
+      
       if (value.length > 0) {
         onChange(value.slice(0, -1));
       }
     }
   };
 
-  // ──────────────────────────────────────
-  // Render
-  // ──────────────────────────────────────
   return (
     <div className="field-autocomplete ingredient-autocomplete">
-      {/* Glass pill with tags INSIDE, matching your UI */}
+      {}
       <div className="ingredient-pill glass-input">
         {value.map((ing) => (
           <span key={ing} className="ingredient-tag">
@@ -214,13 +197,13 @@ export default function IngredientAutocomplete({ value, onChange }: Props) {
             if (suggestions.length) setOpen(true);
           }}
           onBlur={() => {
-            // small delay so clicks on dropdown still register
+            
             setTimeout(() => setOpen(false), 120);
           }}
         />
       </div>
 
-      {/* Dropdown for suggestions */}
+      {}
       {open && suggestions.length > 0 && (
         <div className="field-dropdown">
           {suggestions.map((s) => (

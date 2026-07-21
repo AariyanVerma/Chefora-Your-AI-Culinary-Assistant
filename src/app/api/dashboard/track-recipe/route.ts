@@ -25,7 +25,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Recipe ID is required' }, { status: 400 });
     }
 
-    // Upsert last recipe viewed
     try {
       await sql`
         INSERT INTO dashboard_last_recipe (
@@ -68,7 +67,7 @@ export async function POST(req: Request) {
           updated_at = NOW()
       `;
     } catch (dbError: any) {
-      // If table doesn't exist yet, that's okay - just log and continue
+      
       if (dbError?.code === '42P01') {
         console.log('Dashboard last_recipe table does not exist yet. Run migration to enable tracking.');
         return NextResponse.json({ ok: true, message: 'Table not created yet' });
@@ -85,7 +84,3 @@ export async function POST(req: Request) {
     );
   }
 }
-
-
-
-

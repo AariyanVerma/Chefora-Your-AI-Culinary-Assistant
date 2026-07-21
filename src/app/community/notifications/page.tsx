@@ -15,15 +15,3 @@ export default async function NotificationsPage() {
     </DashboardLayout>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-

@@ -1,9 +1,3 @@
-/**
- * Seed script for Community module demo data
- * Run this after setting up the database schema
- * 
- * Usage: Create a simple API route or run directly in a script
- */
 
 import { sql } from '@/lib/db';
 
@@ -11,7 +5,6 @@ export async function seedCommunityData() {
   try {
     console.log('Starting community seed...');
 
-    // Get existing users (assuming you have at least one user)
     const users = await sql<{ id: string; name: string; email: string }>`
       SELECT id, name, email FROM users LIMIT 5
     `;
@@ -23,11 +16,9 @@ export async function seedCommunityData() {
 
     const userIds = users.rows.map(u => u.id);
 
-    // Create profiles for users
     for (const user of users.rows) {
       const username = user.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
       
-      // Check if profile exists
       const existing = await sql<{ id: string }>`
         SELECT id FROM community_profiles WHERE user_id = ${user.id}
       `;
@@ -47,7 +38,6 @@ export async function seedCommunityData() {
       }
     }
 
-    // Get profiles
     const profiles = await sql<{ id: string; user_id: string; username: string }>`
       SELECT id, user_id, username FROM community_profiles
     `;
@@ -57,7 +47,6 @@ export async function seedCommunityData() {
       return;
     }
 
-    // Sample recipes
     const sampleRecipes = [
       {
         title: 'Creamy Garlic Pasta',
@@ -119,12 +108,10 @@ export async function seedCommunityData() {
       }
     ];
 
-    // Create posts
     for (let i = 0; i < sampleRecipes.length; i++) {
       const recipe = sampleRecipes[i];
       const authorProfile = profiles.rows[i % profiles.rows.length];
 
-      // Create post
       const post = await sql<{ id: string }>`
         INSERT INTO community_posts (author_id, title, caption, visibility)
         VALUES (${authorProfile.user_id}, ${recipe.title}, ${recipe.caption}, 'public')
@@ -133,7 +120,6 @@ export async function seedCommunityData() {
 
       const postId = post.rows[0].id;
 
-      // Add placeholder image (data URL)
       const placeholderImage = `data:image/svg+xml;base64,${Buffer.from(
         `<svg width="600" height="400" xmlns="http://www.w3.org/2000/svg">
           <rect width="600" height="400" fill="#1e293b"/>
@@ -146,7 +132,6 @@ export async function seedCommunityData() {
         VALUES (${postId}, ${placeholderImage}, 0)
       `;
 
-      // Add recipe
       await sql`
         INSERT INTO community_recipes (
           post_id, ingredients, instructions, servings,
@@ -171,7 +156,6 @@ export async function seedCommunityData() {
       console.log(`Created post: ${recipe.title}`);
     }
 
-    // Create some follows (if we have multiple users)
     if (profiles.rows.length > 1) {
       for (let i = 0; i < Math.min(3, profiles.rows.length - 1); i++) {
         await sql`
@@ -190,7 +174,6 @@ export async function seedCommunityData() {
   }
 }
 
-// If running directly (not recommended, use API route instead)
 if (require.main === module) {
   seedCommunityData()
     .then(() => {
@@ -202,4 +185,3 @@ if (require.main === module) {
       process.exit(1);
     });
 }
-

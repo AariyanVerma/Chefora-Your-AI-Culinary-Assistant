@@ -64,7 +64,7 @@ export default function FriendsPage({
         ...prev,
         incoming: prev.incoming.filter(r => r.id !== requestId),
       }));
-      // Refresh friends list
+      
       const updatedFriends = await fetch('/api/community/friends').then(r => r.json());
       setFriends(updatedFriends);
     } catch (error) {
@@ -163,7 +163,7 @@ export default function FriendsPage({
           Friends
         </h1>
 
-        {/* Tabs */}
+        {}
         <div className="chip-row" style={{ marginBottom: '24px', justifyContent: 'center', gap: '8px' }}>
           <button
             onClick={() => setActiveTab('requests')}
@@ -192,7 +192,7 @@ export default function FriendsPage({
           </button>
         </div>
 
-        {/* Search */}
+        {}
         {(activeTab === 'friends' || activeTab === 'suggestions') && (
           <div style={{ marginBottom: '24px' }}>
             <div style={{ position: 'relative' }}>
@@ -209,10 +209,10 @@ export default function FriendsPage({
           </div>
         )}
 
-        {/* Content */}
+        {}
         {activeTab === 'requests' && (
           <div>
-            {/* Incoming Requests */}
+            {}
             {friendRequests.incoming.length > 0 && (
               <div style={{ marginBottom: '32px' }}>
                 <h2 className="cardTitle" style={{ fontSize: 'var(--fs-md)', marginBottom: '16px' }}>
@@ -291,7 +291,7 @@ export default function FriendsPage({
               </div>
             )}
 
-            {/* Outgoing Requests */}
+            {}
             {friendRequests.outgoing.length > 0 && (
               <div>
                 <h2 className="cardTitle" style={{ fontSize: 'var(--fs-md)', marginBottom: '16px', color: '#ffffff' }}>
@@ -520,4 +520,3 @@ export default function FriendsPage({
     </div>
   );
 }
-

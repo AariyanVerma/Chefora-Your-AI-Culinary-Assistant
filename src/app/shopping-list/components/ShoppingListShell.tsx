@@ -33,7 +33,6 @@ export default function ShoppingListShell({
   const [viewMode, setViewMode] = useState<'grouped' | 'list'>('grouped');
   const [isAddItemModalOpen, setIsAddItemModalOpen] = useState(false);
 
-  // Sync state with props when they change (e.g., after router.refresh())
   useEffect(() => {
     setLists(initialLists);
     setSelectedList(initialSelectedList);
@@ -57,7 +56,7 @@ export default function ShoppingListShell({
         store: null,
         planned_date: null,
       });
-      // Refresh to get updated lists
+      
       router.push(`/shopping-list?list=${result.id}`);
       router.refresh();
     } catch (error) {
@@ -72,13 +71,12 @@ export default function ShoppingListShell({
   };
 
   const handleRefresh = () => {
-    // Refresh server data in background
+    
     startTransition(() => {
       router.refresh();
     });
   };
 
-  // Update a specific item in the items array
   const handleItemUpdate = (itemId: string, updates: Partial<ShoppingItem>) => {
     setItems(prevItems => 
       prevItems.map(item => 
@@ -87,9 +85,8 @@ export default function ShoppingListShell({
     );
   };
 
-  // Filter and sort items client-side
   const filteredAndSortedItems = items.filter(item => {
-    // Search filter
+    
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
       const matchesSearch = 
@@ -100,39 +97,33 @@ export default function ShoppingListShell({
       if (!matchesSearch) return false;
     }
 
-    // Category filter
     if (filters.category && item.category !== filters.category) {
       return false;
     }
 
-    // Store filter
     if (filters.store && item.store !== filters.store) {
       return false;
     }
 
-    // Aisle filter
     if (filters.aisle && item.aisle !== filters.aisle) {
       return false;
     }
 
-    // Priority filter
     if (filters.priority && item.priority !== filters.priority) {
       return false;
     }
 
-    // Purchased filter
     if (filters.purchased !== undefined && item.purchased !== filters.purchased) {
       return false;
     }
 
-    // Pantry linked filter
     if (filters.pantry_linked && !item.pantry_item_id) {
       return false;
     }
 
     return true;
   }).sort((a, b) => {
-    // Sort logic
+    
     switch (sortBy) {
       case 'name':
         return (a.name || '').localeCompare(b.name || '');
@@ -152,7 +143,7 @@ export default function ShoppingListShell({
 
   return (
     <div className="shopping-list-container">
-      {/* Header */}
+      {}
       <div className="shopping-list-header">
         <div className="shopping-list-header-left">
           <div>
@@ -180,9 +171,9 @@ export default function ShoppingListShell({
         </div>
       </div>
 
-      {/* Top Row: Lists Panel and Smart Panel */}
+      {}
       <div className="shopping-list-top-row">
-        {/* Left: Lists Panel */}
+        {}
         <aside className="shopping-lists-panel">
           <ListsPanel
             lists={lists}
@@ -192,7 +183,7 @@ export default function ShoppingListShell({
           />
         </aside>
 
-        {/* Right: Smart Panel */}
+        {}
         <aside className="shopping-smart-panel">
           <SmartPanel
             listId={selectedList?.id}
@@ -202,7 +193,6 @@ export default function ShoppingListShell({
               const newAisle = filters.aisle === aisle ? '' : aisle;
               setFilters(prev => ({ ...prev, aisle: newAisle }));
               
-              // Scroll to items board when aisle is selected
               if (newAisle) {
                 setTimeout(() => {
                   const itemsBoard = document.querySelector('.shopping-items-board');
@@ -217,7 +207,7 @@ export default function ShoppingListShell({
         </aside>
       </div>
 
-      {/* Command Bar */}
+      {}
       <CommandBar
         filters={filters}
         sortBy={sortBy}
@@ -230,7 +220,7 @@ export default function ShoppingListShell({
         }}
       />
 
-      {/* Bottom: Items Board - Full Width */}
+      {}
       <main className="shopping-items-board">
         {selectedList ? (
           <>
@@ -253,7 +243,7 @@ export default function ShoppingListShell({
               bulkMode={bulkMode}
               onRefresh={() => {
                 setSelectedItems(new Set());
-                // Refresh server data in background - state will sync via useEffect
+                
                 handleRefresh();
               }}
               onItemUpdate={handleItemUpdate}
@@ -292,6 +282,3 @@ export default function ShoppingListShell({
     </div>
   );
 }
-
-
-

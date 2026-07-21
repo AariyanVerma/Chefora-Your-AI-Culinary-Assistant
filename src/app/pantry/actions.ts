@@ -6,7 +6,6 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
-// Validation schemas
 const pantryItemSchema = z.object({
   name: z.string().min(1, 'Name is required').max(200),
   quantity: z.number().min(0, 'Quantity must be non-negative'),
@@ -22,12 +21,12 @@ const pantryItemSchema = z.object({
     z.number()
   ]).nullable().optional().transform((val) => {
     if (!val) return null;
-    // If it's already a number, return it
+    
     if (typeof val === 'number') return val;
-    // Remove currency symbols and whitespace, keep only numbers and decimal point
+    
     const cleaned = val.replace(/[^\d.-]/g, '').trim();
     if (!cleaned) return null;
-    // Convert to number, return null if invalid
+    
     const num = parseFloat(cleaned);
     return isNaN(num) ? null : num;
   }),
@@ -71,7 +70,6 @@ export type PantryStats = {
   health_score: number;
 };
 
-// Helper to verify ownership
 async function verifyOwnership(itemId: string, userId: string): Promise<boolean> {
   const result = await sql<{ user_id: string }>`
     SELECT user_id FROM pantry_items WHERE id = ${itemId} AND user_id = ${userId}
@@ -79,7 +77,6 @@ async function verifyOwnership(itemId: string, userId: string): Promise<boolean>
   return result.rows.length > 0;
 }
 
-// Helper to auto-fetch product image from Google
 async function fetchProductImage(productName: string): Promise<string | null> {
   try {
     const GOOGLE_SEARCH_KEY = process.env.GOOGLE_SEARCH_KEY;
@@ -93,8 +90,6 @@ async function fetchProductImage(productName: string): Promise<string | null> {
     const query = String(productName || "").trim();
     if (!query) return null;
     
-    // Build a more specific query to get product images, not recipe images
-    // Exclude common recipe/dish terms and focus on the raw/fresh product
     const searchTerms = [
       `${query} fresh product`,
       `${query} raw ingredient`,
@@ -103,13 +98,12 @@ async function fetchProductImage(productName: string): Promise<string | null> {
       `${query} grocery store product`
     ];
     
-    // Try multiple search strategies to find the best product image
     for (const searchQuery of searchTerms) {
       try {
         const params = new URLSearchParams({
           q: `${searchQuery} -recipe -dish -pizza -pasta -salad -soup -cooked -prepared`,
           searchType: "image",
-          num: "10", // Get more results to filter through
+          num: "10", 
           key: GOOGLE_SEARCH_KEY,
           cx: GOOGLE_SEARCH_CX,
           safe: "active",
@@ -119,26 +113,23 @@ async function fetchProductImage(productName: string): Promise<string | null> {
         
         const url = `https://www.googleapis.com/customsearch/v1?${params.toString()}`;
         const response = await fetch(url, {
-          next: { revalidate: 3600 } // Cache for 1 hour
+          next: { revalidate: 3600 } 
         });
         
         if (!response.ok) {
-          continue; // Try next search term
+          continue; 
         }
         
         const data = await response.json();
-        const items = data?.items || [];
+        const items: Array<{ link?: string; title?: string; snippet?: string }> = data?.items || [];
         
         if (!items.length) {
-          continue; // Try next search term
+          continue; 
         }
         
-        // Filter results to prefer product images over recipe images
-        // Check image context and URL for product-related keywords
         const productKeywords = ['fresh', 'raw', 'whole', 'package', 'grocery', 'store', 'ingredient', 'produce', 'organic'];
         const recipeKeywords = ['recipe', 'dish', 'pizza', 'pasta', 'salad', 'soup', 'cooked', 'prepared', 'meal', 'foodie'];
         
-        // Score each image based on context
         const scoredItems = items.map((item: any) => {
           const link = item?.link || '';
           const title = (item?.title || '').toLowerCase();
@@ -147,12 +138,10 @@ async function fetchProductImage(productName: string): Promise<string | null> {
           
           let score = 0;
           
-          // Positive points for product-related terms
           productKeywords.forEach(keyword => {
             if (context.includes(keyword)) score += 2;
           });
           
-          // Negative points for recipe-related terms
           recipeKeywords.forEach(keyword => {
             if (context.includes(keyword)) score -= 3;
           });
@@ -160,26 +149,22 @@ async function fetchProductImage(productName: string): Promise<string | null> {
           return { item, score, link };
         });
         
-        // Sort by score (highest first)
         scoredItems.sort((a, b) => b.score - a.score);
         
-        // First, try to find a high-scoring item (score > 0)
         const bestItem = scoredItems.find(item => item.score > 0 && item.link && item.link.startsWith('http'));
         if (bestItem) {
           return bestItem.link;
         }
         
-        // If no high-scoring item, try any item with non-negative score
         const neutralItem = scoredItems.find(item => item.score >= 0 && item.link && item.link.startsWith('http'));
         if (neutralItem) {
           return neutralItem.link;
         }
         
-        // If still nothing, try the first valid URL that doesn't contain recipe keywords
         for (const item of items) {
           const link = item?.link;
           if (link && typeof link === 'string' && link.startsWith('http')) {
-            // Quick check: skip if URL clearly indicates a recipe
+            
             const linkLower = link.toLowerCase();
             if (!recipeKeywords.some(keyword => linkLower.includes(keyword))) {
               return link;
@@ -187,8 +172,6 @@ async function fetchProductImage(productName: string): Promise<string | null> {
           }
         }
         
-        // Last resort: return the first valid image even if it might be a recipe
-        // Better to have some image than no image
         for (const item of items) {
           const link = item?.link;
           if (link && typeof link === 'string' && link.startsWith('http')) {
@@ -197,12 +180,11 @@ async function fetchProductImage(productName: string): Promise<string | null> {
         }
         
       } catch (error) {
-        // Continue to next search term if this one fails
+        
         continue;
       }
     }
     
-    // If all search terms failed, try a simpler search as last resort
     try {
       const params = new URLSearchParams({
         q: `${query} product`,
@@ -224,7 +206,6 @@ async function fetchProductImage(productName: string): Promise<string | null> {
         const data = await response.json();
         const items = data?.items || [];
         
-        // Return the first valid image URL as last resort
         for (const item of items) {
           const link = item?.link;
           if (link && typeof link === 'string' && link.startsWith('http')) {
@@ -243,7 +224,6 @@ async function fetchProductImage(productName: string): Promise<string | null> {
   }
 }
 
-// Get pantry stats
 export async function getPantryStats(): Promise<PantryStats> {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
@@ -288,7 +268,6 @@ export async function getPantryStats(): Promise<PantryStats> {
   const expiring7 = expiring7Res.rows[0]?.count || 0;
   const expired = expiredRes.rows[0]?.count || 0;
 
-  // Health score: 100 - (expired * 10) - (expiring_1_3 * 5) - (expiring_7 * 2)
   const healthScore = Math.max(0, Math.min(100, 100 - (expired * 10) - (expiring1_3 * 5) - (expiring7 * 2)));
 
   return {
@@ -300,7 +279,6 @@ export async function getPantryStats(): Promise<PantryStats> {
   };
 }
 
-// Get pantry items with filters
 export async function getPantryItems(params: {
   search?: string;
   category?: string;
@@ -333,14 +311,9 @@ export async function getPantryItems(params: {
   const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   const sevenDaysDateStr = sevenDaysFromNow.toISOString().split('T')[0];
 
-  // Build query using a workaround for @vercel/postgres conditional fragment limitations
-  // Fetch all items for user first, then filter in memory
-  // This is not ideal for large datasets but works reliably
   const searchPattern = search ? `%${search}%` : '';
 
-  // Fetch all items for user (with a reasonable limit to avoid memory issues)
-  // We'll filter and sort in memory to avoid SQL parameter issues
-  const fetchLimit = 1000; // Reasonable limit for in-memory filtering
+  const fetchLimit = 1000; 
   const query = sql<PantryItem>`
     SELECT * FROM pantry_items 
     WHERE user_id = ${user.id}
@@ -361,7 +334,6 @@ export async function getPantryItems(params: {
     sort_by
   });
 
-  // Apply search filter
   if (search) {
     const searchLower = search.toLowerCase();
     filtered = filtered.filter(item => 
@@ -371,22 +343,18 @@ export async function getPantryItems(params: {
     );
   }
 
-  // Apply category filter
   if (category) {
     filtered = filtered.filter(item => item.category === category);
   }
 
-  // Apply location filter
   if (location) {
     filtered = filtered.filter(item => item.location === location);
   }
 
-  // Apply opened filter
   if (opened_only) {
     filtered = filtered.filter(item => item.is_opened);
   }
 
-  // Apply expiry status filter
   if (expiry_status === 'expired') {
     filtered = filtered.filter(item => item.expiry_date && new Date(item.expiry_date) < new Date(nowDateStr));
   } else if (expiry_status === 'expiring_soon') {
@@ -409,7 +377,6 @@ export async function getPantryItems(params: {
     filtered = filtered.filter(item => !item.expiry_date);
   }
 
-  // Apply sorting
   if (sort_by === 'expiry_soonest' && expiry_status !== 'no_expiry') {
     filtered.sort((a, b) => {
       if (!a.expiry_date && !b.expiry_date) return a.name.localeCompare(b.name);
@@ -428,28 +395,25 @@ export async function getPantryItems(params: {
     filtered.sort((a, b) => Number(b.quantity) - Number(a.quantity));
   }
 
-  // Apply pagination
   const paginated = filtered.slice(offset, offset + limit);
   console.log('getPantryItems - Filtered items count:', filtered.length);
   console.log('getPantryItems - Returning items count:', paginated.length);
   return paginated;
 }
 
-// Create pantry item
 export async function createPantryItem(data: z.infer<typeof pantryItemSchema>) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
   const validated = pantryItemSchema.parse(data);
 
-  // Auto-fetch image if not provided
   let imageUrl = validated.image_url || null;
   if (!imageUrl && validated.name) {
     try {
       imageUrl = await fetchProductImage(validated.name);
     } catch (error) {
       console.error('Failed to fetch product image:', error);
-      // Continue without image if fetch fails
+      
     }
   }
 
@@ -479,7 +443,6 @@ export async function createPantryItem(data: z.infer<typeof pantryItemSchema>) {
   return { success: true };
 }
 
-// Update pantry item
 export async function updatePantryItem(
   itemId: string,
   data: z.infer<typeof pantryItemSchema>
@@ -493,10 +456,9 @@ export async function updatePantryItem(
 
   const validated = pantryItemSchema.parse(data);
 
-  // Auto-fetch image if not provided and name changed
   let imageUrl = validated.image_url || null;
   if (!imageUrl && validated.name) {
-    // Check if we need to fetch a new image (only if name changed or no existing image)
+    
     const existing = await sql<{ image_url: string | null }>`
       SELECT image_url FROM pantry_items WHERE id = ${itemId} AND user_id = ${user.id}
     `;
@@ -533,7 +495,6 @@ export async function updatePantryItem(
   return { success: true };
 }
 
-// Delete pantry item
 export async function deletePantryItem(itemId: string) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
@@ -548,14 +509,12 @@ export async function deletePantryItem(itemId: string) {
   return { success: true };
 }
 
-// Bulk actions
 export async function bulkUpdatePantryItems(data: z.infer<typeof bulkUpdateSchema>) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
   const validated = bulkUpdateSchema.parse(data);
 
-  // Verify all items belong to user
   const ownershipCheck = await sql<{ id: string }>`
     SELECT id FROM pantry_items 
     WHERE id = ANY(${validated.item_ids}) AND user_id = ${user.id}
@@ -614,7 +573,6 @@ export async function bulkUpdatePantryItems(data: z.infer<typeof bulkUpdateSchem
   return { success: true };
 }
 
-// Snooze expiry reminder
 export async function snoozeExpiryReminder(itemId: string, hours: number = 24) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
@@ -635,7 +593,6 @@ export async function snoozeExpiryReminder(itemId: string, hours: number = 24) {
   return { success: true };
 }
 
-// Add to shopping list
 export async function addToShoppingList(itemId: string, listId?: string) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
@@ -654,10 +611,9 @@ export async function addToShoppingList(itemId: string, listId?: string) {
 
   const pantryItem = item.rows[0];
 
-  // Get or create a default shopping list
   let targetListId = listId;
   if (!targetListId) {
-    // Get the most recently updated non-archived list, or create a new one
+    
     const existingList = await sql<{ id: string }>`
       SELECT id FROM shopping_lists 
       WHERE user_id = ${user.id} AND archived = false 
@@ -668,7 +624,7 @@ export async function addToShoppingList(itemId: string, listId?: string) {
     if (existingList.rows.length > 0) {
       targetListId = existingList.rows[0].id;
     } else {
-      // Create a new default list
+      
       const newList = await sql<{ id: string }>`
         INSERT INTO shopping_lists (user_id, name, store, planned_date, archived)
         VALUES (${user.id}, 'Shopping List', null, null, false)
@@ -678,7 +634,6 @@ export async function addToShoppingList(itemId: string, listId?: string) {
     }
   }
 
-  // Check if item already exists in this list (by pantry_item_id)
   const existing = await sql<{ id: string }>`
     SELECT id FROM shopping_items 
     WHERE list_id = ${targetListId} 
@@ -689,11 +644,10 @@ export async function addToShoppingList(itemId: string, listId?: string) {
   `;
 
   if (existing.rows.length > 0) {
-    // Item already in list, don't duplicate
+    
     return { success: true, message: 'Item already in shopping list' };
   }
 
-  // Convert price string to number if it exists
   let priceEst: number | null = null;
   if (pantryItem.price) {
     const priceNum = typeof pantryItem.price === 'string' 
@@ -702,7 +656,6 @@ export async function addToShoppingList(itemId: string, listId?: string) {
     priceEst = isNaN(priceNum) ? null : priceNum;
   }
 
-  // Insert into shopping_items with pantry_item_id link
   await sql`
     INSERT INTO shopping_items (
       list_id, user_id, name, quantity, unit, category, 
@@ -722,7 +675,6 @@ export async function addToShoppingList(itemId: string, listId?: string) {
     )
   `;
 
-  // Update shopping list updated_at timestamp
   await sql`
     UPDATE shopping_lists
     SET updated_at = NOW()
@@ -734,7 +686,6 @@ export async function addToShoppingList(itemId: string, listId?: string) {
   return { success: true, listId: targetListId };
 }
 
-// Fetch and update image for existing item
 export async function fetchItemImage(itemId: string): Promise<{ success: boolean; image_url?: string; error?: string }> {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
@@ -753,12 +704,10 @@ export async function fetchItemImage(itemId: string): Promise<{ success: boolean
 
   const pantryItem = item.rows[0];
   
-  // If item already has an image, return it
   if (pantryItem.image_url) {
     return { success: true, image_url: pantryItem.image_url };
   }
 
-  // Fetch new image
   try {
     const imageUrl = await fetchProductImage(pantryItem.name);
     
@@ -779,7 +728,6 @@ export async function fetchItemImage(itemId: string): Promise<{ success: boolean
   }
 }
 
-// Export to CSV
 export async function exportPantryItemsToCSV(itemIds?: string[]): Promise<string> {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
@@ -802,7 +750,6 @@ export async function exportPantryItemsToCSV(itemIds?: string[]): Promise<string
   const result = await query;
   const items = result.rows;
 
-  // Generate CSV
   const headers = ['Name', 'Quantity', 'Unit', 'Category', 'Location', 'Expiry Date', 'Purchase Date', 'Opened', 'Brand', 'Notes'];
   const rows = items.map(item => [
     item.name,
@@ -824,4 +771,3 @@ export async function exportPantryItemsToCSV(itemIds?: string[]): Promise<string
 
   return csv;
 }
-

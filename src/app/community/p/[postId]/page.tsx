@@ -15,7 +15,6 @@ export default async function PostDetailPage({
     redirect('/login');
   }
   
-  // Handle Next.js 15+ async params
   const resolvedParams = params instanceof Promise ? await params : params;
   
   try {
@@ -37,7 +36,7 @@ export default async function PostDetailPage({
     );
   } catch (error: any) {
     console.error('Error loading post:', error);
-    // If it's a table doesn't exist error, show helpful message
+    
     if (error?.message?.includes('does not exist') || error?.message?.includes('relation')) {
       return (
         <DashboardLayout>
@@ -65,4 +64,3 @@ export default async function PostDetailPage({
     throw error;
   }
 }
-

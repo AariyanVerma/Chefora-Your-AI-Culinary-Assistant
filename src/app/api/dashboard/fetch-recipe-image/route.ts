@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     const GOOGLE_SEARCH_CX = process.env.GOOGLE_SEARCH_CX;
     
     if (!GOOGLE_SEARCH_KEY || !GOOGLE_SEARCH_CX) {
-      // Return null instead of error - we'll use fallback
+      
       return NextResponse.json({ image_url: null });
     }
 
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     }
 
     try {
-      // Search for recipe/dish images
+      
       const params = new URLSearchParams({
         q: `${query} recipe dish food`,
         searchType: "image",
@@ -37,14 +37,13 @@ export async function GET(request: Request) {
       
       const url = `https://www.googleapis.com/customsearch/v1?${params.toString()}`;
       const response = await fetch(url, {
-        next: { revalidate: 3600 } // Cache for 1 hour
+        next: { revalidate: 3600 } 
       });
       
       if (response.ok) {
         const data = await response.json();
         const items = data?.items || [];
         
-        // Return the first valid image URL
         for (const item of items) {
           const link = item?.link;
           if (link && typeof link === 'string' && link.startsWith('http')) {
@@ -62,7 +61,3 @@ export async function GET(request: Request) {
     return NextResponse.json({ image_url: null });
   }
 }
-
-
-
-

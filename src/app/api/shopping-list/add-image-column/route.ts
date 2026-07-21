@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 
-// Simple endpoint to add image_url column - no auth required for development
-// In production, you should add authentication
 export async function GET() {
   try {
-    // Add image_url column if it doesn't exist
+    
     await sql`
       DO $$ 
       BEGIN 
@@ -33,6 +31,3 @@ export async function GET() {
     );
   }
 }
-
-
-

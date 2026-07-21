@@ -44,7 +44,7 @@ export default function MessagesModal({ isOpen, onClose }: MessagesModalProps) {
   useEffect(() => {
     if (isOpen) {
       fetchConversations();
-      // Poll every 3 seconds for conversations in modal
+      
       const interval = setInterval(fetchConversations, 3000);
       return () => clearInterval(interval);
     }
@@ -179,4 +179,3 @@ export default function MessagesModal({ isOpen, onClose }: MessagesModalProps) {
     </div>
   );
 }
-

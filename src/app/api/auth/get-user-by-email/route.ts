@@ -1,4 +1,4 @@
-// src/app/api/auth/get-user-by-email/route.ts
+
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 
@@ -11,7 +11,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
-    // Fetch user name by email (case-insensitive)
     const { rows } = await sql<{ name: string }>`
       SELECT name
       FROM users
@@ -29,4 +28,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
-

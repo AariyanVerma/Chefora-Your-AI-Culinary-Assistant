@@ -40,7 +40,7 @@ export default function PantryItemCard({ item, onUpdate, viewMode = 'grid' }: Pa
       const centerLeft = rect.left + rect.width / 2;
       setMessagePosition({ top: centerTop, left: centerLeft });
     } else {
-      // Fallback to viewport center if dashboard-main not found
+      
       setMessagePosition({ top: window.innerHeight / 2, left: window.innerWidth / 2 });
     }
   };
@@ -123,19 +123,15 @@ export default function PantryItemCard({ item, onUpdate, viewMode = 'grid' }: Pa
       setIsListModalOpen(false);
       setIsAddingToList(false);
       
-      // Calculate center position of dashboard-main
       calculateDashboardMainCenter();
       
-      // Show custom success message
       setSuccessMessage({ show: true, listName });
       
-      // Hide success message after 3 seconds
       setTimeout(() => {
         setSuccessMessage({ show: false, listName: '' });
         setMessagePosition(null);
       }, 3000);
       
-      // Update parent after a delay to allow message to display
       setTimeout(() => {
         onUpdate();
       }, 3500);
@@ -159,19 +155,15 @@ export default function PantryItemCard({ item, onUpdate, viewMode = 'grid' }: Pa
       setIsListModalOpen(false);
       setIsAddingToList(false);
       
-      // Calculate center position of dashboard-main
       calculateDashboardMainCenter();
       
-      // Show custom success message
       setSuccessMessage({ show: true, listName: newListName });
       
-      // Hide success message after 3 seconds
       setTimeout(() => {
         setSuccessMessage({ show: false, listName: '' });
         setMessagePosition(null);
       }, 3000);
       
-      // Update parent after a delay to allow message to display
       setTimeout(() => {
         onUpdate();
       }, 3500);
@@ -187,30 +179,28 @@ export default function PantryItemCard({ item, onUpdate, viewMode = 'grid' }: Pa
     try {
       const result = await fetchItemImage(item.id);
       if (result.success && result.image_url) {
-        // Update the item locally for immediate feedback
+        
         item.image_url = result.image_url;
         router.refresh();
       } else {
-        // Show a more user-friendly error message
+        
         const errorMsg = result.error || 'Could not find an image for this product. A placeholder image will be used.';
         console.warn('Image fetch warning:', errorMsg);
-        // Still refresh to show any placeholder that was set
+        
         router.refresh();
       }
     } catch (error: any) {
       console.error('Failed to fetch image:', error);
-      // Don't show alert for network errors, just log and refresh
+      
       router.refresh();
     } finally {
       setIsFetchingImage(false);
     }
   };
 
-  // Get month and date for expiry date box
   const expiryMonth = expiryDate ? expiryDate.toLocaleString('default', { month: 'short' }).toUpperCase() : '';
   const expiryDay = expiryDate ? expiryDate.getDate() : '';
 
-  // Determine card accent color based on expiry status (same as card background)
   const cardAccentColor = 
     expiryStatus === 'expired' ? '#ef4444' :
     expiryStatus === 'expiring_soon' ? '#fb923c' :
@@ -450,7 +440,7 @@ export default function PantryItemCard({ item, onUpdate, viewMode = 'grid' }: Pa
         />
       )}
 
-      {/* List Selection Modal */}
+      {}
       {isListModalOpen && (
         <>
           <div 
@@ -602,7 +592,7 @@ export default function PantryItemCard({ item, onUpdate, viewMode = 'grid' }: Pa
         </>
       )}
 
-      {/* Success Message - Rendered via Portal, centered in dashboard-main */}
+      {}
       {isMounted && successMessage.show && successMessage.listName && messagePosition && createPortal(
         <div 
           className="pantry-success-message"
@@ -640,4 +630,3 @@ export default function PantryItemCard({ item, onUpdate, viewMode = 'grid' }: Pa
     </>
   );
 }
-

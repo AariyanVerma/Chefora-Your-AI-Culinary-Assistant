@@ -12,8 +12,7 @@ export function usePackedPills() {
 
     const items = Array.from(container.children) as HTMLElement[];
 
-    // Measure widths
-    const widths = items.map((el) => el.offsetWidth + 16); // + gap
+    const widths = items.map((el) => el.offsetWidth + 16); 
 
     const totalWidth = container.offsetWidth;
     let currentRowWidth = 0;
@@ -32,7 +31,6 @@ export function usePackedPills() {
 
     if (row.length) rows.push(row);
 
-    // Flatten rows → produce final visual order
     const newOrder = rows.flat();
     setOrders(newOrder);
   };

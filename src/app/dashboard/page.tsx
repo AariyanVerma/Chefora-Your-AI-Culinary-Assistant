@@ -1,4 +1,4 @@
-// app/dashboard/page.tsx
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -81,14 +81,14 @@ export default function DashboardPage() {
     recipeId?: string;
     diet?: string | null;
     cuisine?: string | null;
-    ingredients?: Array<{ name: string; quantity?: string }>;
+    ingredients?: Array<{ name: string; quantity?: string } | string>;
     steps?: string[];
   } | null>(null);
   const [generatingRecipe, setGeneratingRecipe] = useState(false);
   const [weeklyMeals, setWeeklyMeals] = useState<Record<string, Array<{ timeOfDay: string; title: string; recipeId: string }>>>({});
-  const [recipeGenerationIteration, setRecipeGenerationIteration] = useState(0); // Track how many times user clicked "Another idea"
+  const [recipeGenerationIteration, setRecipeGenerationIteration] = useState(0); 
   const [allPantryIngredients, setAllPantryIngredients] = useState<Array<{ name: string; expiry_date: string; daysUntilExpiry: number }>>([]);
-  const [previousRecipeTitles, setPreviousRecipeTitles] = useState<string[]>([]); // Track previously shown recipes to avoid duplicates
+  const [previousRecipeTitles, setPreviousRecipeTitles] = useState<string[]>([]); 
   const [recipeDetails, setRecipeDetails] = useState<{
     title: string;
     imageUrl: string | null;
@@ -106,7 +106,6 @@ export default function DashboardPage() {
   const [showRecipeModal, setShowRecipeModal] = useState(false);
   const [loadingRecipeDetails, setLoadingRecipeDetails] = useState(false);
 
-  // Function to get time-based greeting
   const getTimeBasedGreeting = () => {
     const now = new Date();
     const hour = now.getHours();
@@ -126,7 +125,7 @@ export default function DashboardPage() {
         const res = await fetch('/api/dashboard/data');
         if (res.ok) {
           const data = await res.json();
-          console.log('Dashboard data received:', data); // Debug log
+          console.log('Dashboard data received:', data); 
           setUser(data.user);
           setProfile(data.profile);
           setStats(data.stats || stats);
@@ -135,28 +134,23 @@ export default function DashboardPage() {
           setPantryStats(data.pantryStats || pantryStats);
           setExpiringIngredients(data.expiringIngredients || []);
           
-          // Fetch all pantry ingredients for recipe generation (excluding expired) - async, don't wait
           fetchAllPantryIngredients(data.profile);
           
-          // Generate recipe suggestion immediately with expiring ingredients (don't wait for pantry ingredients)
-          // Pantry ingredients are only needed for "Another idea" expanding the pool
           if (data.expiringIngredients && data.expiringIngredients.length > 0) {
-            // Reset iteration when new data loads
+            
             setRecipeGenerationIteration(0);
             console.log('[Dashboard] Generating recipe with expiring ingredients:', data.expiringIngredients);
             generateRecipeSuggestion(data.expiringIngredients, data.profile, 0);
           } else if (!suggestedRecipe && !generatingRecipe) {
-            // Generate a general suggestion even without expiring ingredients
+            
             setRecipeGenerationIteration(0);
             setPreviousRecipeTitles([]);
             console.log('[Dashboard] Generating recipe with no ingredients (preferences only)');
             generateRecipeSuggestion([], data.profile, 0);
           }
           
-          // Fetch weekly meal plan
           fetchWeeklyMeals();
           
-          // Fetch avatar and username from community profile
           if (data.user?.id) {
             try {
               const profileRes = await fetch(`/api/community/profile?userId=${data.user.id}`);
@@ -183,9 +177,6 @@ export default function DashboardPage() {
     fetchData();
   }, [router]);
 
-  // Note: Page tracking is now handled globally by PageTracking component in layout.tsx
-
-  // Fetch all pantry ingredients (excluding expired)
   async function fetchAllPantryIngredients(userProfile: Profile | null): Promise<void> {
     try {
       const response = await fetch('/api/dashboard/pantry-ingredients');
@@ -204,7 +195,6 @@ export default function DashboardPage() {
     }
   }
 
-  // Fisher-Yates shuffle algorithm for proper randomization
   function shuffleArray<T>(array: T[]): T[] {
     const shuffled = [...array];
     for (let i = shuffled.length - 1; i > 0; i--) {
@@ -214,16 +204,15 @@ export default function DashboardPage() {
     return shuffled;
   }
 
-  // Extract detailed ingredient quantity information
   function extractDetailedIngredient(ing: any): { name: string; quantity: string } {
-    // Priority: original string (has full detail) > amount + unit > name only
+    
     let quantity = '';
     
     if (ing.original && typeof ing.original === 'string' && ing.original.trim()) {
-      // Original string usually has the full detail like "2 tbsp olive oil"
+      
       quantity = ing.original.trim();
     } else if (ing.amount && ing.unit) {
-      // Construct from amount and unit
+      
       quantity = `${ing.amount} ${ing.unit}`.trim();
       if (ing.unitLong && ing.unitLong !== ing.unit) {
         quantity += ` (${ing.unitLong})`;
@@ -242,18 +231,15 @@ export default function DashboardPage() {
     return { name, quantity };
   }
 
-  // Enhance instructions to be more beginner-friendly and detailed (only apply once per pattern)
   function enhanceInstructionsForBeginners(steps: string[]): string[] {
     return steps.map((step, index) => {
       let enhanced = step.trim();
       if (!enhanced) return enhanced;
       
-      // Track if we've already enhanced to avoid repetition
       const alreadyEnhanced = enhanced.includes('(turn knob') || enhanced.includes('(cook while') || enhanced.includes('(mix thoroughly');
       
-      // Only apply enhancements if not already enhanced
       if (!alreadyEnhanced) {
-        // Heat oil - do this first before other heat replacements
+        
         if (/heat\s+(?:the\s+)?oil/i.test(enhanced) && !enhanced.includes('medium heat')) {
           enhanced = enhanced.replace(/heat\s+(?:the\s+)?oil\s+(?:in\s+)?(?:a\s+)?(?:pan|pot)/i, 'Heat the oil in a pan over medium heat (turn knob to medium, about 5-6 on a 1-10 scale) for about 1-2 minutes until it shimmers slightly');
           if (enhanced === step.trim()) {
@@ -261,7 +247,6 @@ export default function DashboardPage() {
           }
         }
         
-        // Heat levels (only if not already explained)
         if (!enhanced.includes('(turn knob')) {
           enhanced = enhanced.replace(/\bmedium-high\s+heat\b/i, 'medium-high heat (turn knob to medium-high, about 6-7 on a 1-10 scale)');
           enhanced = enhanced.replace(/\bmedium\s+heat\b/i, 'medium heat (turn knob to medium, about 5-6 on a 1-10 scale)');
@@ -270,7 +255,6 @@ export default function DashboardPage() {
           enhanced = enhanced.replace(/\bmedium-low\s+heat\b/i, 'medium-low heat (turn knob to medium-low, about 3-4 on a 1-10 scale)');
         }
         
-        // Cooking techniques (only if not already explained)
         if (!enhanced.includes('(cook while') && !enhanced.includes('(cook in hot')) {
           enhanced = enhanced.replace(/\bsauté\b/i, 'sauté (cook while stirring frequently)');
           enhanced = enhanced.replace(/\bfry\b/i, 'fry (cook in hot oil)');
@@ -282,7 +266,6 @@ export default function DashboardPage() {
           enhanced = enhanced.replace(/\bboil\b/i, 'boil (cook at a rolling boil with bubbles)');
         }
         
-        // Cooking techniques with explanations (only if not already explained)
         if (!enhanced.includes('(mix thoroughly')) {
           enhanced = enhanced.replace(/\bstir\s+well\b/i, 'stir well (mix thoroughly using a spoon or spatula)');
         }
@@ -294,7 +277,6 @@ export default function DashboardPage() {
           enhanced = enhanced.replace(/\bstir\s+frequently\b/i, 'stir frequently (mix every 30 seconds)');
         }
         
-        // Doneness indicators (only if not already explained)
         if (!enhanced.includes('(test by poking')) {
           enhanced = enhanced.replace(/cook\s+until\s+tender\b/i, 'cook until tender (test by poking with a fork - it should go through easily without resistance, usually 5-10 minutes)');
         }
@@ -308,14 +290,12 @@ export default function DashboardPage() {
           enhanced = enhanced.replace(/cook\s+until\s+soft\b/i, 'cook until soft (test by pressing with a fork - it should yield easily)');
         }
         
-        // Seasoning (only if not already explained)
         if (!enhanced.includes('(add salt, pepper')) {
           enhanced = enhanced.replace(/season\s+to\s+taste\b/i, 'season to taste (add salt, pepper, or spices gradually, tasting as you go until it tastes good to you)');
           enhanced = enhanced.replace(/add\s+salt\s+to\s+taste\b/i, 'add salt to taste (sprinkle a little salt, mix, taste, and add more if needed)');
         }
       }
       
-      // Capitalize first letter
       if (enhanced && enhanced[0]) {
         enhanced = enhanced[0].toUpperCase() + enhanced.slice(1);
       }
@@ -324,32 +304,21 @@ export default function DashboardPage() {
     });
   }
 
-  // Get ingredients based on generation iteration
-  // This function expands the ingredient pool with each "Another idea" click
   function getIngredientsForIteration(iteration: number): Array<{ name: string }> {
-    // If no pantry ingredients loaded yet, return empty array (API can use preferences)
+    
     if (allPantryIngredients.length === 0) {
       return [];
     }
     
-    // Iteration 0: Only ingredients expiring in 0-3 days (urgent - near expiry)
-    // Iteration 1: Ingredients expiring in 0-7 days (expanding pool)
-    // Iteration 2: Ingredients expiring in 0-14 days (expanding further)
-    // Iteration 3+: All non-expired ingredients (mix and match from entire pantry)
     const dayThresholds = [3, 7, 14, 999];
     const threshold = dayThresholds[Math.min(iteration, dayThresholds.length - 1)];
     
-    // Filter: ONLY include non-expired ingredients (daysUntilExpiry >= 0) within threshold
     const filtered = allPantryIngredients
-      .filter(ing => ing.daysUntilExpiry >= 0 && ing.daysUntilExpiry <= threshold) // Never use expired (daysUntilExpiry < 0)
+      .filter(ing => ing.daysUntilExpiry >= 0 && ing.daysUntilExpiry <= threshold) 
       .map(ing => ({ name: ing.name }));
     
-    // Use Fisher-Yates shuffle for better randomization
     const shuffled = shuffleArray(filtered);
     
-    // For variety, limit the number of ingredients sent (pick random subset)
-    // This ensures different ingredient combinations each time
-    // Pick between 3-7 ingredients (or all if we have fewer than 3)
     const maxIngredients = Math.min(Math.max(3, Math.floor(Math.random() * 5) + 3), shuffled.length);
     const selected = shuffled.slice(0, maxIngredients);
     
@@ -358,7 +327,6 @@ export default function DashboardPage() {
     return selected;
   }
 
-  // Fetch recipe image from Google
   async function fetchRecipeImage(recipeTitle: string): Promise<string | null> {
     try {
       console.log('[Dashboard] Fetching recipe image for:', recipeTitle);
@@ -387,8 +355,6 @@ export default function DashboardPage() {
     return null;
   }
 
-  // Generate recipe suggestion based on expiring ingredients
-  // Prioritizes near-expiry ingredients first, expands pool with "Another idea"
   async function generateRecipeSuggestion(
     ingredients: Array<{ name: string }>,
     userProfile: Profile | null,
@@ -398,57 +364,50 @@ export default function DashboardPage() {
     
     setGeneratingRecipe(true);
     try {
-      // Get ingredients based on iteration (expanding pool each time)
-      // Iteration 0: Use provided expiring ingredients (0-3 days) or get from pantry
-      // Iteration 1+: Expand pool using getIngredientsForIteration
+      
       let ingredientsToUse: Array<{ name: string }>;
       if (iteration === 0) {
-        // First generation: prioritize expiring ingredients (0-3 days)
+        
         if (ingredients.length > 0) {
-          // Use provided expiring ingredients (already filtered to near expiry)
+          
           ingredientsToUse = ingredients;
         } else if (allPantryIngredients.length > 0) {
-          // Get from pantry if available (0-3 days, non-expired only)
+          
           ingredientsToUse = getIngredientsForIteration(0);
         } else {
-          // No ingredients available, API will use preferences only
+          
           ingredientsToUse = [];
         }
       } else {
-        // "Another idea" clicked: expand pool based on iteration
+        
         ingredientsToUse = getIngredientsForIteration(iteration);
       }
       
       const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
       const ingredientNames = ingredientsToUse.map(i => i.name);
       
-      // Always send ingredients if available - API should prioritize recipes using these ingredients
       const requestBody: {
         ingredients?: string[];
         diet?: string;
         cuisine?: string;
         maxTimeMinutes?: number;
         mood?: string;
-        exclude?: string[]; // Exclude previously shown recipes
+        exclude?: string[]; 
       } = {
-        mood: iteration === 0 ? 'quick dinner' : (iteration === 1 ? 'comfort food' : iteration === 2 ? 'healthy meal' : 'creative cooking'), // Vary mood for different iterations
+        mood: iteration === 0 ? 'quick dinner' : (iteration === 1 ? 'comfort food' : iteration === 2 ? 'healthy meal' : 'creative cooking'), 
       };
 
-      // Prioritize ingredients - always include if available
       if (ingredientNames.length > 0) {
         requestBody.ingredients = ingredientNames;
       }
       
-      // Exclude previously shown recipe titles to avoid duplicates
       if (previousRecipeTitles.length > 0) {
-        // Note: This assumes the API supports an exclude parameter
-        // If not, we'll filter on the client side after receiving results
+        
         requestBody.exclude = previousRecipeTitles;
       }
       
       console.log('[Dashboard] Requesting recipe with ingredients:', ingredientNames, 'excluding:', previousRecipeTitles);
       
-      // Add user preferences
       if (userProfile?.dietary_profile) {
         requestBody.diet = userProfile.dietary_profile;
       }
@@ -471,21 +430,17 @@ export default function DashboardPage() {
       if (response.ok) {
         const responseData = await response.json();
         
-        // Handle different API response formats
-        // Some backends return direct recipe, others return { searchMatches: [...] } or { mainRecipe: {...} }
         let recipe = responseData;
         if (responseData.searchMatches && Array.isArray(responseData.searchMatches) && responseData.searchMatches.length > 0) {
-          // New format: { searchMatches: [recipe1, recipe2, ...] }
+          
           recipe = responseData.searchMatches[0];
         } else if (responseData.mainRecipe) {
-          // Alternative format: { mainRecipe: {...} }
+          
           recipe = responseData.mainRecipe;
         }
         
-        // Extract recipe title (try multiple possible fields)
         const recipeTitle = recipe.title || recipe.name || 'Recipe Suggestion';
         
-        // Extract difficulty from recipe data or infer from time
         let difficulty = 'Easy';
         if (recipe.difficulty) {
           difficulty = recipe.difficulty.charAt(0).toUpperCase() + recipe.difficulty.slice(1);
@@ -495,21 +450,17 @@ export default function DashboardPage() {
           else if (time > 30) difficulty = 'Medium';
         }
         
-        // Extract servings
         const servings = recipe.servings || 4;
         
-        // Extract dietary preference
         const diet = recipe.diet || (recipe.dietLabels && recipe.dietLabels.length > 0 ? recipe.dietLabels[0] : null) || userProfile?.dietary_profile || null;
         
-        // Extract cuisine
         const cuisine = recipe.cuisine || (recipe.cuisines && Array.isArray(recipe.cuisines) && recipe.cuisines.length > 0 ? recipe.cuisines[0] : null) || null;
         
-        // Extract ingredients from recipe response if available - use detailed extraction
         let extractedIngredients: Array<{ name: string; quantity?: string }> = [];
         if (recipe.ingredients && Array.isArray(recipe.ingredients)) {
           extractedIngredients = recipe.ingredients.map((ing: any) => {
             if (typeof ing === 'string') {
-              // Try to parse string format like "2 tbsp olive oil"
+              
               const parts = ing.trim().split(/\s+/);
               if (parts.length >= 3 && /^\d+/.test(parts[0])) {
                 const quantity = parts.slice(0, 2).join(' ');
@@ -519,13 +470,12 @@ export default function DashboardPage() {
               return { name: ing, quantity: '' };
             }
             return extractDetailedIngredient(ing);
-          }).filter(ing => ing.name && ing.name.length > 0);
+          }).filter((ing: { name: string; quantity?: string }) => ing.name && ing.name.length > 0);
         } else if (recipe.extendedIngredients && Array.isArray(recipe.extendedIngredients)) {
           extractedIngredients = recipe.extendedIngredients.map((ing: any) => extractDetailedIngredient(ing))
-            .filter(ing => ing.name && ing.name.length > 0);
+            .filter((ing: { name: string; quantity?: string }) => ing.name && ing.name.length > 0);
         }
         
-        // Extract steps from recipe response if available - enhance for beginners
         let extractedSteps: string[] = [];
         if (recipe.steps && Array.isArray(recipe.steps)) {
           extractedSteps = recipe.steps.map((step: any) => typeof step === 'string' ? step : step.step || step.text || '').filter(Boolean);
@@ -538,16 +488,14 @@ export default function DashboardPage() {
           extractedSteps = recipe.instructions
             .replace(/<[^>]*>/g, '')
             .split(/[\r\n]+/)
-            .map(s => s.trim())
-            .filter(s => s.length > 0);
+            .map((s: string) => s.trim())
+            .filter((s: string) => s.length > 0);
         }
         
-        // Enhance steps to be more beginner-friendly
         if (extractedSteps.length > 0) {
           extractedSteps = enhanceInstructionsForBeginners(extractedSteps);
         }
         
-        // Try to fetch image from Google first, fallback to API image
         let recipeImageUrl = recipe.imageUrl || recipe.image || recipe.thumbnailUrl || null;
         console.log('[Dashboard] Initial recipe image URL from API:', recipeImageUrl);
         
@@ -557,7 +505,6 @@ export default function DashboardPage() {
           console.log('[Dashboard] Image URL after Google fetch:', recipeImageUrl);
         }
         
-        // Final fallback to placeholder
         if (!recipeImageUrl) {
           console.log('[Dashboard] No image found, using placeholder');
           recipeImageUrl = 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=400&h=400&fit=crop&q=80';
@@ -565,14 +512,12 @@ export default function DashboardPage() {
         
         console.log('[Dashboard] Final recipe image URL:', recipeImageUrl);
         
-        // Extract description/summary (try multiple fields and strip HTML if needed)
         let description = recipe.summary || recipe.description || recipe.shortDescription || null;
         if (description && typeof description === 'string') {
-          // Strip HTML tags if present
+          
           description = description.replace(/<[^>]*>/g, '').trim();
         }
         
-        // If no description from API, create one that highlights pantry ingredients being used
         if (!description) {
           if (ingredientsToUse.length > 0) {
             const ingredientList = ingredientsToUse.slice(0, 5).map(i => i.name).join(', ');
@@ -585,7 +530,7 @@ export default function DashboardPage() {
             description = 'A delicious recipe suggestion tailored to your preferences!';
           }
         } else if (ingredientsToUse.length > 0) {
-          // Enhance API description to mention pantry ingredients if available
+          
           const ingredientHint = ingredientsToUse.slice(0, 3).map(i => i.name).join(', ');
           if (iteration === 0) {
             description = `${description} Uses your expiring ingredients: ${ingredientHint}.`;
@@ -611,12 +556,11 @@ export default function DashboardPage() {
         console.log('[Dashboard] Setting suggested recipe:', recipeToSet);
         setSuggestedRecipe(recipeToSet);
         
-        // Add this recipe title to the previous recipes list (limit to last 10 to avoid memory issues)
         setPreviousRecipeTitles(prev => {
           const normalizedNewTitle = recipeTitle.toLowerCase().trim();
-          // Check if it's already in the list
+          
           if (!prev.some(title => title.toLowerCase().trim() === normalizedNewTitle)) {
-            const updated = [recipeTitle, ...prev].slice(0, 10); // Keep only last 10
+            const updated = [recipeTitle, ...prev].slice(0, 10); 
             console.log('[Dashboard] Updated previous recipes list:', updated);
             return updated;
           }
@@ -630,7 +574,6 @@ export default function DashboardPage() {
     }
   }
 
-  // Fetch full recipe details (updates existing recipeDetails if successful)
   async function fetchRecipeDetails(recipeId: string) {
     if (!recipeId) {
       console.log('[Dashboard] fetchRecipeDetails called with no recipeId');
@@ -643,9 +586,8 @@ export default function DashboardPage() {
       const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
       console.log('[Dashboard] Fetching recipe details for ID:', recipeId);
       
-      // Add timeout using AbortController for better browser compatibility
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000); 
       
       const response = await fetch(`${API_BASE}/api/recipes/${recipeId}`, {
         signal: controller.signal,
@@ -659,7 +601,6 @@ export default function DashboardPage() {
         const recipe = await response.json();
         console.log('[Dashboard] Recipe details received:', recipe);
         
-        // Handle different response formats - some APIs return nested data
         let recipeData = recipe;
         if (recipe.searchMatches && Array.isArray(recipe.searchMatches) && recipe.searchMatches.length > 0) {
           recipeData = recipe.searchMatches[0];
@@ -667,12 +608,11 @@ export default function DashboardPage() {
           recipeData = recipe.mainRecipe;
         }
         
-        // Extract ingredients - handle different formats with detailed extraction
         let ingredients: Array<{ name: string; quantity: string }> = [];
         if (recipeData.ingredients && Array.isArray(recipeData.ingredients)) {
           ingredients = recipeData.ingredients.map((ing: any) => {
             if (typeof ing === 'string') {
-              // Try to parse string format like "2 tbsp olive oil"
+              
               const parts = ing.trim().split(/\s+/);
               if (parts.length >= 3 && /^\d+/.test(parts[0])) {
                 const quantity = parts.slice(0, 2).join(' ');
@@ -682,13 +622,12 @@ export default function DashboardPage() {
               return { name: ing, quantity: '' };
             }
             return extractDetailedIngredient(ing);
-          }).filter(ing => ing.name && ing.name.length > 0);
+          }).filter((ing: { name: string; quantity: string }) => ing.name && ing.name.length > 0);
         } else if (recipeData.extendedIngredients && Array.isArray(recipeData.extendedIngredients)) {
           ingredients = recipeData.extendedIngredients.map((ing: any) => extractDetailedIngredient(ing))
-            .filter(ing => ing.name && ing.name.length > 0);
+            .filter((ing: { name: string; quantity: string }) => ing.name && ing.name.length > 0);
         }
         
-        // Extract steps - handle different formats and enhance for beginners
         let steps: string[] = [];
         if (recipeData.steps && Array.isArray(recipeData.steps)) {
           steps = recipeData.steps.map((step: any) => typeof step === 'string' ? step : step.step || step.text || '');
@@ -698,15 +637,14 @@ export default function DashboardPage() {
             steps = instructions.steps.map((s: any) => s.step || s.text || '');
           }
         } else if (recipeData.instructions && typeof recipeData.instructions === 'string') {
-          // Split HTML instructions into steps
+          
           steps = recipeData.instructions
             .replace(/<[^>]*>/g, '')
             .split(/[\r\n]+/)
-            .map(s => s.trim())
-            .filter(s => s.length > 0);
+            .map((s: string) => s.trim())
+            .filter((s: string) => s.length > 0);
         }
         
-        // ALWAYS fetch ingredients and instructions from AI (Gemini/Groq) - this is the primary source
         try {
           console.log('[Dashboard] Fetching ingredients and instructions from AI models...');
           const enhanceResponse = await fetch('/api/dashboard/enhance-recipe', {
@@ -715,8 +653,8 @@ export default function DashboardPage() {
             body: JSON.stringify({
               recipeTitle: recipeData.title || recipeData.name || suggestedRecipe?.title || 'Recipe',
               description: recipeData.summary || recipeData.description || suggestedRecipe?.description,
-              existingIngredients: ingredients, // Use as context only
-              existingSteps: steps, // Use as context only
+              existingIngredients: ingredients, 
+              existingSteps: steps, 
               servings: recipeData.servings || suggestedRecipe?.servings,
               difficulty: recipeData.difficulty || suggestedRecipe?.difficulty,
               cuisine: recipeData.cuisine || (recipeData.cuisines && Array.isArray(recipeData.cuisines) && recipeData.cuisines.length > 0 ? recipeData.cuisines[0] : null),
@@ -727,22 +665,21 @@ export default function DashboardPage() {
           if (enhanceResponse.ok) {
             const enhanced = await enhanceResponse.json();
             
-            // ALWAYS use AI-generated ingredients and steps as primary source
             if (enhanced.ingredients && enhanced.ingredients.length > 0) {
               ingredients = enhanced.ingredients;
               console.log('[Dashboard] Using AI-generated ingredients:', ingredients.length, 'items');
             } else if (enhanced.partial) {
-              // Fallback: use partial enhancements if AI completely failed
+              
               console.warn('[Dashboard] Using partial ingredient enhancements (AI unavailable)');
               ingredients = enhanced.ingredients || ingredients;
             }
             
             if (enhanced.steps && enhanced.steps.length > 0) {
-              // Enhance AI steps with additional beginner-friendly explanations
+              
               steps = enhanceInstructionsForBeginners(enhanced.steps);
               console.log('[Dashboard] Using AI-generated instructions:', steps.length, 'steps');
             } else if (enhanced.partial) {
-              // Fallback: use partial steps if AI completely failed
+              
               console.warn('[Dashboard] Using partial instruction enhancements (AI unavailable)');
               steps = enhanced.steps || steps;
               if (steps.length > 0) {
@@ -759,34 +696,31 @@ export default function DashboardPage() {
               console.error('[Dashboard] ⚠️ Using fallback data instead of AI-generated content');
             }
           } else {
-            // API returned error status - use fallback enhancements
+            
             const errorText = await enhanceResponse.text().catch(() => 'Unknown error');
             console.warn('[Dashboard] AI enhancement API failed:', enhanceResponse.status, errorText);
-            // Use existing data as last resort with basic enhancements
+            
             if (steps.length > 0) {
               steps = enhanceInstructionsForBeginners(steps);
             }
           }
         } catch (enhanceError: any) {
           console.warn('[Dashboard] Error calling AI enhancement API:', enhanceError?.message || enhanceError);
-          // Last resort: use existing data with basic enhancements
+          
           if (steps.length > 0) {
             steps = enhanceInstructionsForBeginners(steps);
           }
         }
         
-        // Extract times
         const totalTime = recipeData.estimatedTimeMinutes || recipeData.totalTimeMinutes || recipeData.readyInMinutes || suggestedRecipe?.estimatedTimeMinutes || null;
         let prepTime = recipeData.prepTimeMinutes || recipeData.preparationMinutes || null;
         let cookTime = recipeData.cookTimeMinutes || recipeData.cookingMinutes || null;
         
-        // If we have total time but not separate times, estimate them (40% prep, 60% cook)
         if (totalTime && !prepTime && !cookTime) {
           prepTime = Math.floor(totalTime * 0.4);
           cookTime = Math.floor(totalTime * 0.6);
         }
         
-        // Extract cuisine - check multiple possible fields
         const cuisine = recipeData.cuisine || 
                        (recipeData.cuisines && Array.isArray(recipeData.cuisines) && recipeData.cuisines.length > 0 ? recipeData.cuisines[0] : null) ||
                        null;
@@ -808,36 +742,34 @@ export default function DashboardPage() {
           summary: recipeData.summary || recipeData.description || recipeData.shortDescription || suggestedRecipe?.description || null,
         });
       } else {
-        // If API fails, keep existing recipeDetails (don't overwrite with empty data)
+        
         const errorText = await response.text().catch(() => 'Unknown error');
         console.warn('[Dashboard] Recipe details API failed:', response.status, errorText);
         console.log('[Dashboard] Keeping existing recipe details (modal already showing)');
-        // Don't update recipeDetails - keep what we already showed
+        
       }
     } catch (error: any) {
-      // Handle network errors, timeouts, etc.
+      
       if (error.name === 'AbortError') {
         console.warn('[Dashboard] Recipe details fetch timed out after 10 seconds');
       } else {
         console.warn('[Dashboard] Error fetching recipe details (network/timeout):', error?.message || error);
       }
       console.log('[Dashboard] Keeping existing recipe details (modal already showing)');
-      // Don't update recipeDetails - keep what we already showed from suggestedRecipe
+      
     } finally {
       setLoadingRecipeDetails(false);
     }
   }
 
-  // Handler for "Cook this" button
   async function handleCookThis() {
     if (!suggestedRecipe) return;
     
-    // First, extract ingredients and steps from suggested recipe if available
     let ingredients: Array<{ name: string; quantity: string }> = [];
     if (suggestedRecipe.ingredients && Array.isArray(suggestedRecipe.ingredients)) {
       ingredients = suggestedRecipe.ingredients.map(ing => {
         if (typeof ing === 'string') {
-          // Try to parse string format like "2 tbsp olive oil"
+          
           const parts = ing.trim().split(/\s+/);
           if (parts.length >= 3 && /^\d+/.test(parts[0])) {
             const quantity = parts.slice(0, 2).join(' ');
@@ -853,7 +785,6 @@ export default function DashboardPage() {
       });
     }
     
-    // Try to extract from description if not available
     if (ingredients.length === 0 && suggestedRecipe.description) {
       const ingredientMatch = suggestedRecipe.description.match(/Uses your.*?ingredients?:\s*([^.]+)/i) ||
                               suggestedRecipe.description.match(/featuring.*?ingredients?:\s*([^.]+)/i);
@@ -865,17 +796,14 @@ export default function DashboardPage() {
       }
     }
     
-    // Get steps and enhance them for beginners
     let steps = suggestedRecipe.steps && Array.isArray(suggestedRecipe.steps) 
       ? [...suggestedRecipe.steps] 
       : [];
     
-    // Enhance steps to be more beginner-friendly if we have them
     if (steps.length > 0) {
       steps = enhanceInstructionsForBeginners(steps);
     }
     
-    // Check if we need to generate missing details via AI - be more aggressive
     const hasMissingQuantities = ingredients.some(ing => 
       !ing.quantity || 
       ing.quantity.length === 0 || 
@@ -883,13 +811,13 @@ export default function DashboardPage() {
       ing.quantity.toLowerCase().includes('to taste') ||
       ing.quantity.toLowerCase().includes('quantity as needed')
     );
-    const hasBriefSteps = steps.some(step => step.length < 50); // Steps should be detailed
+    const hasBriefSteps = steps.some(step => step.length < 50); 
     
     const needsEnhancement = ingredients.length === 0 || 
                              steps.length === 0 || 
                              hasMissingQuantities ||
                              hasBriefSteps ||
-                             ingredients.length < 3; // Always enhance if we have fewer than 3 ingredients
+                             ingredients.length < 3; 
     
     if (needsEnhancement) {
       try {
@@ -915,7 +843,7 @@ export default function DashboardPage() {
             if (ingredients.length === 0) {
               ingredients = enhanced.ingredients;
             } else {
-              // Merge quantities into existing ingredients
+              
               ingredients = ingredients.map(ing => {
                 const aiIng = enhanced.ingredients.find((ai: any) => 
                   ai.name.toLowerCase().includes(ing.name.toLowerCase()) || 
@@ -926,7 +854,7 @@ export default function DashboardPage() {
                   quantity: ing.quantity || aiIng?.quantity || '',
                 };
               });
-              // Add new ingredients from AI
+              
               enhanced.ingredients.forEach((aiIng: any) => {
                 if (!ingredients.some(ing => 
                   ing.name.toLowerCase().includes(aiIng.name.toLowerCase()) ||
@@ -954,11 +882,10 @@ export default function DashboardPage() {
         }
       } catch (enhanceError: any) {
         console.warn('[Dashboard] Error enhancing suggested recipe with AI:', enhanceError?.message || enhanceError);
-        // Continue with existing data - don't break the experience
+        
       }
     }
     
-    // Prepare basic recipe details from suggested recipe
     const totalTime = suggestedRecipe.estimatedTimeMinutes || null;
     let prepTime = null;
     let cookTime = null;
@@ -979,11 +906,9 @@ export default function DashboardPage() {
       difficulty: suggestedRecipe.difficulty,
       cuisine: suggestedRecipe.cuisine || null,
       diet: suggestedRecipe.diet || profile?.dietary_profile || null,
-      summary: suggestedRecipe.description || null,
+      summary: suggestedRecipe.description || undefined,
     };
     
-    // Always show the recipe details (now with AI-generated ingredients and steps)
-    // The AI enhancement above has already populated ingredients and steps from Gemini/Groq
     if (ingredients.length > 0 && steps.length > 0) {
       console.log('[Dashboard] ✅ Displaying recipe with AI-generated ingredients and instructions');
       console.log('[Dashboard] Ingredients count:', ingredients.length, 'Steps count:', steps.length);
@@ -995,42 +920,32 @@ export default function DashboardPage() {
     setShowRecipeModal(true);
   }
 
-  // Handler for "Another idea" button
-  // Expands ingredient pool: 0-7 days, then 0-14 days, then all non-expired
   async function handleAnotherIdea() {
-    // Ensure we have the latest pantry ingredients (refresh if needed)
+    
     if (allPantryIngredients.length === 0) {
       await fetchAllPantryIngredients(profile);
-      // Small delay to allow state to update
+      
       await new Promise(resolve => setTimeout(resolve, 150));
     }
     
-    // Increment iteration to expand ingredient pool
     const nextIteration = recipeGenerationIteration + 1;
     setRecipeGenerationIteration(nextIteration);
     
     console.log('[Dashboard] "Another idea" clicked - iteration:', nextIteration, 'previous recipes:', previousRecipeTitles);
     
-    // Generate recipe with expanded ingredient pool (mix and match from pantry)
-    // getIngredientsForIteration will handle the expansion logic and random selection
-    // Previous recipes are tracked to avoid duplicates
     await generateRecipeSuggestion([], profile, nextIteration);
   }
 
-  // Fetch weekly meal plan
   async function fetchWeeklyMeals() {
     if (!user) return;
     
     try {
       const startOfWeek = new Date();
-      startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + 1); // Monday
+      startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + 1); 
       startOfWeek.setHours(0, 0, 0, 0);
       
       const mealsByDay: Record<string, Array<{ timeOfDay: string; title: string; recipeId: string }>> = {};
       
-      // For now, we'll use community posts from this week as meal plan indicators
-      // In the future, you might want a dedicated meal_plans table
-      // For this week, we'll show "Planned" if there are any posts on that day
       const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
       days.forEach(day => {
         mealsByDay[day] = [];
@@ -1042,7 +957,6 @@ export default function DashboardPage() {
     }
   }
 
-  // Get day name from date
   function getDayName(date: Date): string {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     return days[date.getDay()];
@@ -1058,7 +972,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      {/* Background system matching main app */}
+      {}
       <div className="bg-base" aria-hidden />
       <div className="bg-anim" aria-hidden>
         <span
@@ -1111,7 +1025,7 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Sidebar - Outside scrollable container */}
+      {}
       <aside 
         className={`dashboard-sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}
       >
@@ -1175,7 +1089,7 @@ export default function DashboardPage() {
             </Link>
           </nav>
           
-          {/* Recent Activity Section */}
+          {}
           <div className="dashboard-sidebar-section">
             <div className="dashboard-sidebar-section-header">
               <span>Recent</span>
@@ -1232,7 +1146,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Quick Stats Section */}
+          {}
           <div className="dashboard-sidebar-section">
             <div className="dashboard-sidebar-section-header">
               <span>Quick Stats</span>
@@ -1250,7 +1164,7 @@ export default function DashboardPage() {
           </div>
         </aside>
 
-        {/* Sidebar Overlay */}
+        {}
         {sidebarOpen && (
           <div 
             className="dashboard-sidebar-overlay" 
@@ -1258,7 +1172,7 @@ export default function DashboardPage() {
           />
         )}
 
-        {/* Hamburger Menu Button */}
+        {}
         <button 
           className="dashboard-sidebar-toggle"
           onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -1270,11 +1184,11 @@ export default function DashboardPage() {
         </button>
 
       <div className="dashboard-layout layer-content">
-        {/* Main Content */}
+        {}
         <main className="dashboard-main">
-          {/* Top Header */}
+          {}
           <header className="dashboard-top-header">
-            {/* Logo - Centered in header */}
+            {}
             <div className="dashboard-logo-center-screen">
               <Link href="/dashboard">
                 <Image
@@ -1379,7 +1293,7 @@ export default function DashboardPage() {
             </div>
           </header>
 
-          {/* Profile Tags - Fixed visibility */}
+          {}
           <div className="dashboard-profile-section">
             <div className="card-wrapper dashboard-profile-card">
               <div className="card-background"></div>
@@ -1459,7 +1373,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Stats Cards Row */}
+          {}
           <div className="dashboard-stats-row">
             <div className="card-wrapper dashboard-stat-card">
               <div className="card-background"></div>
@@ -1503,10 +1417,10 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Content Grid */}
+          {}
           <div className="container">
             <div className="dashboard-grid">
-              {/* Hero Card */}
+              {}
               <div className="card-wrapper dashboard-hero-card">
                 <div className="card-background"></div>
                 <div className="glass card card-mount">
@@ -1562,7 +1476,7 @@ export default function DashboardPage() {
                                 e.currentTarget.style.transform = 'scale(1)';
                               }}
                               onError={(e) => {
-                                // Fallback to placeholder if image fails to load
+                                
                                 const target = e.target as HTMLImageElement;
                                 target.src = 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=400&h=400&fit=crop&q=80';
                               }}
@@ -1709,7 +1623,7 @@ export default function DashboardPage() {
                       <button
                         className="btn ghost tap-ripple"
                         onClick={() => {
-                          // Share recipe functionality
+                          
                           if (navigator.share && suggestedRecipe) {
                             navigator.share({
                               title: suggestedRecipe.title,
@@ -1718,12 +1632,12 @@ export default function DashboardPage() {
                                 ? `${window.location.origin}/ai-recipes?recipe=${suggestedRecipe.recipeId}`
                                 : window.location.origin + '/ai-recipes',
                             }).catch(() => {
-                              // Fallback: copy to clipboard
+                              
                               const text = `Check out this recipe: ${suggestedRecipe.title}`;
                               navigator.clipboard.writeText(text);
                             });
                           } else if (suggestedRecipe) {
-                            // Fallback: copy to clipboard
+                            
                             const text = `Check out this recipe: ${suggestedRecipe.title}`;
                             navigator.clipboard.writeText(text).then(() => {
                               alert('Recipe link copied to clipboard!');
@@ -1745,7 +1659,7 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Pantry Card */}
+              {}
               <div className="card-wrapper dashboard-pantry-card">
                 <div className="card-background"></div>
                 <div className="glass card card-mount">
@@ -1815,7 +1729,7 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Meal Planner Card - Fixed cropping */}
+              {}
               <div className="card-wrapper dashboard-planner-card">
                 <div className="card-background"></div>
                 <div className="glass card card-mount">
@@ -1859,7 +1773,7 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Quick Actions Card */}
+              {}
               <div className="card-wrapper dashboard-actions-card">
                 <div className="card-background"></div>
                 <div className="glass card card-mount">
@@ -1906,7 +1820,7 @@ export default function DashboardPage() {
         </main>
       </div>
 
-      {/* Recipe Details Modal */}
+      {}
       {showRecipeModal && (
         <div 
           className="dashboard-sidebar-overlay"
@@ -1993,7 +1907,7 @@ export default function DashboardPage() {
               </div>
             ) : recipeDetails ? (
               <>
-                {/* Recipe Title */}
+                {}
                 <h2 className="cardTitle" style={{ 
                   fontSize: 'var(--fs-xl)', 
                   marginBottom: '1.5rem',
@@ -2004,7 +1918,7 @@ export default function DashboardPage() {
                   {recipeDetails.title}
                 </h2>
 
-                {/* Recipe Image */}
+                {}
                 {recipeDetails.imageUrl && (
                   <div style={{
                     marginBottom: '1.5rem',
@@ -2024,7 +1938,7 @@ export default function DashboardPage() {
                         display: 'block',
                       }}
                       onError={(e) => {
-                        // Fallback to placeholder if image fails to load
+                        
                         const target = e.target as HTMLImageElement;
                         target.src = 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=400&h=400&fit=crop&q=80';
                       }}
@@ -2032,7 +1946,7 @@ export default function DashboardPage() {
                   </div>
                 )}
 
-                {/* Recipe Meta Information */}
+                {}
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
@@ -2097,7 +2011,7 @@ export default function DashboardPage() {
                   )}
                 </div>
 
-                {/* Recipe Summary */}
+                {}
                 {recipeDetails.summary && (
                   <div style={{
                     marginBottom: '1.5rem',
@@ -2112,7 +2026,7 @@ export default function DashboardPage() {
                   </div>
                 )}
 
-                {/* Ingredients */}
+                {}
                 {recipeDetails.ingredients && recipeDetails.ingredients.length > 0 && (
                   <div style={{ marginBottom: '1.5rem' }}>
                     <h3 className="cardTitle" style={{ 
@@ -2176,7 +2090,7 @@ export default function DashboardPage() {
                   </div>
                 )}
 
-                {/* Instructions */}
+                {}
                 {recipeDetails.steps && recipeDetails.steps.length > 0 && (
                   <div style={{ marginBottom: '1.5rem' }}>
                     <h3 className="cardTitle" style={{ 
@@ -2245,7 +2159,7 @@ export default function DashboardPage() {
                   </div>
                 )}
 
-                {/* Show message if ingredients or steps are missing */}
+                {}
                 {(!recipeDetails.ingredients || recipeDetails.ingredients.length === 0) && (
                   <div style={{
                     padding: 'var(--pad-md)',
@@ -2285,7 +2199,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Last Recipe Modal */}
+      {}
       {showLastRecipeModal && lastRecipe && (
         <div 
           className="dashboard-sidebar-overlay"
@@ -2371,7 +2285,7 @@ export default function DashboardPage() {
                   <button 
                     className="btn tap-ripple"
                     onClick={() => {
-                      // Navigate to recipe - for now, try AI recipes page
+                      
                       router.push(`/ai-recipes?recipe=${lastRecipe.recipe_id}`);
                       setShowLastRecipeModal(false);
                     }}

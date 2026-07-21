@@ -1,4 +1,4 @@
-// src/lib/auth.ts
+
 import { sql } from './db';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -33,12 +33,8 @@ export function createSessionToken(userId: string) {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
 }
 
-/**
- * Read current user from the session cookie.
- * Used in server components and API routes.
- */
 export async function getCurrentUser(): Promise<SessionUser | null> {
-  // In Next 16 cookies() can be treated as async-safe, so we `await` it
+  
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
   if (!token) return null;

@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { Heart, MessageCircle, UserPlus, Repeat2, Bell } from 'lucide-react';
 
 export default function NotificationsPage() {
-  const [notifications] = useState<any[]>([]); // Would fetch from API
+  const [notifications] = useState<any[]>([]); 
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -120,4 +120,3 @@ export default function NotificationsPage() {
     </DashboardLayout>
   );
 }
-

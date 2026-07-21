@@ -3,7 +3,6 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect, useTransition } from 'react';
 
-// Styles for the apply button (from Uiverse.io by satyamchaudharydev)
 const applyButtonStyles = `
   .pantry-apply-button {
     position: relative;
@@ -78,7 +77,6 @@ const applyButtonStyles = `
   }
 `;
 
-// Styles for the clear all button (from Uiverse.io by ernestnash)
 const clearButtonStyles = `
   .pantry-clear-button {
     display: inline-block;
@@ -163,7 +161,6 @@ export default function PantryFilters({
   const [openedOnly, setOpenedOnly] = useState(initialOpenedOnly);
   const [sortBy, setSortBy] = useState(initialSortBy || '');
 
-  // Sync state with URL params when they change externally
   useEffect(() => {
     const urlSearch = searchParams.get('search') || '';
     const urlCategory = searchParams.get('category') || '';
@@ -181,7 +178,6 @@ export default function PantryFilters({
       urlSortBy
     });
 
-    // Update state from URL params
     setSearch(urlSearch);
     setCategory(urlCategory);
     setLocation(urlLocation);
@@ -226,12 +222,9 @@ export default function PantryFilters({
       currentSortBy
     });
     
-    // Use router.replace to update URL without adding to history, then refresh
-    // Add a timestamp to bust cache and ensure server component re-renders
     const urlWithCacheBust = `${newUrl}${newUrl.includes('?') ? '&' : '?'}_t=${Date.now()}`;
     console.log('updateFilters - Final URL with cache bust:', urlWithCacheBust);
     
-    // Force a full page reload to ensure server component receives new searchParams
     window.location.href = urlWithCacheBust;
   };
 
@@ -245,7 +238,7 @@ export default function PantryFilters({
   };
 
   const handleClearAllFilters = () => {
-    // Reset all filter states
+    
     setSearch('');
     setCategory('');
     setLocation('');
@@ -253,7 +246,6 @@ export default function PantryFilters({
     setOpenedOnly(false);
     setSortBy('');
     
-    // Navigate to base pantry URL with cache-busting
     const urlWithCacheBust = `/pantry?_t=${Date.now()}`;
     router.replace(urlWithCacheBust);
     setTimeout(() => {
@@ -301,7 +293,7 @@ export default function PantryFilters({
                   const params = new URLSearchParams(searchParams.toString());
                   params.delete('search');
                   const newUrl = `/pantry${params.toString() ? `?${params.toString()}` : ''}`;
-                  // Add cache-busting parameter and refresh
+                  
                   const urlWithCacheBust = `${newUrl}${newUrl.includes('?') ? '&' : '?'}_t=${Date.now()}`;
                   router.replace(urlWithCacheBust);
                   setTimeout(() => {
@@ -337,7 +329,7 @@ export default function PantryFilters({
               onChange={(e) => {
                 const newCategory = e.target.value || undefined;
                 setCategory(newCategory || '');
-                // Don't apply immediately - wait for Apply button
+                
               }}
             >
               <option value="">N/A</option>
@@ -357,7 +349,7 @@ export default function PantryFilters({
               onChange={(e) => {
                 const newLocation = e.target.value || undefined;
                 setLocation(newLocation || '');
-                // Don't apply immediately - wait for Apply button
+                
               }}
             >
               <option value="">N/A</option>
@@ -377,7 +369,7 @@ export default function PantryFilters({
               onChange={(e) => {
                 const newExpiryStatus = e.target.value || undefined;
                 setExpiryStatus(newExpiryStatus || '');
-                // Don't apply immediately - wait for Apply button
+                
               }}
             >
               {EXPIRY_STATUSES.map((status) => (
@@ -396,7 +388,7 @@ export default function PantryFilters({
               onChange={(e) => {
                 const newSortBy = e.target.value || undefined;
                 setSortBy(newSortBy || '');
-                // Don't apply immediately - wait for Apply button
+                
               }}
             >
               {SORT_OPTIONS.map((option) => (
@@ -425,7 +417,7 @@ export default function PantryFilters({
                   onChange={(e) => {
                     const newOpenedOnly = e.target.checked;
                     setOpenedOnly(newOpenedOnly);
-                    // Don't apply immediately - wait for Apply button
+                    
                   }}
                   className="pantry-filter-checkbox"
                 />
@@ -464,4 +456,3 @@ export default function PantryFilters({
     </div>
   );
 }
-

@@ -87,7 +87,7 @@ export default function CommunityFilters({
         WebkitBackdropFilter: 'blur(20px) saturate(150%)',
         minHeight: '660px'
       }}>
-        {/* Header with Clear All */}
+        {}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <h3 style={{ 
             margin: 0, 
@@ -120,7 +120,7 @@ export default function CommunityFilters({
           )}
         </div>
 
-        {/* Search - Prominent */}
+        {}
         <div className="community-filter-section" style={{ marginBottom: '12px' }}>
           <div style={{ position: 'relative' }}>
             <input
@@ -142,7 +142,7 @@ export default function CommunityFilters({
           </div>
         </div>
 
-        {/* Sort */}
+        {}
         <div className="community-filter-section" style={{ marginBottom: '12px' }}>
           <label className="community-filter-label" style={{ fontSize: 'var(--fs-sm)', marginBottom: '6px' }}>Sort by</label>
           <div className="community-filter-buttons" style={{ gap: '6px' }}>
@@ -170,7 +170,7 @@ export default function CommunityFilters({
           </div>
         </div>
 
-        {/* Cuisine Filter */}
+        {}
         <div className="community-filter-section" style={{ marginBottom: '12px' }}>
           <label className="community-filter-label" style={{ fontSize: 'var(--fs-sm)', marginBottom: '6px' }}>Cuisine</label>
           <div className="chip-row community-filter-chips" style={{ flexWrap: 'wrap', gap: '6px' }}>
@@ -194,7 +194,7 @@ export default function CommunityFilters({
           </div>
         </div>
 
-        {/* Difficulty Filter */}
+        {}
         <div className="community-filter-section" style={{ marginBottom: '12px' }}>
           <label className="community-filter-label" style={{ fontSize: 'var(--fs-sm)', marginBottom: '6px' }}>Difficulty</label>
           <div className="community-filter-buttons" style={{ gap: '6px' }}>
@@ -218,7 +218,7 @@ export default function CommunityFilters({
           </div>
         </div>
 
-        {/* Time Filter */}
+        {}
         <div className="community-filter-section" style={{ marginBottom: '12px' }}>
           <label className="community-filter-label" style={{ fontSize: 'var(--fs-sm)', marginBottom: '6px' }}>⏱️ Time</label>
           <div className="community-filter-buttons" style={{ flexWrap: 'wrap', gap: '6px' }}>
@@ -242,7 +242,7 @@ export default function CommunityFilters({
           </div>
         </div>
 
-        {/* Servings Filter */}
+        {}
         <div className="community-filter-section" style={{ marginBottom: '12px' }}>
           <label className="community-filter-label" style={{ fontSize: 'var(--fs-sm)', marginBottom: '6px' }}>👥 Servings</label>
           <div className="community-filter-buttons" style={{ gap: '6px' }}>
@@ -266,7 +266,7 @@ export default function CommunityFilters({
           </div>
         </div>
 
-        {/* Dietary Restrictions */}
+        {}
         <div className="community-filter-section" style={{ marginBottom: '12px' }}>
           <label className="community-filter-label" style={{ fontSize: 'var(--fs-sm)', marginBottom: '6px' }}>🥗 Dietary</label>
           <div className="chip-row community-filter-chips" style={{ flexWrap: 'wrap', gap: '6px' }}>
@@ -283,7 +283,7 @@ export default function CommunityFilters({
           </div>
         </div>
 
-        {/* Advanced Filters Toggle */}
+        {}
         <button
           onClick={() => setShowAdvanced(!showAdvanced)}
           className="tap-ripple"
@@ -309,7 +309,7 @@ export default function CommunityFilters({
           </span>
         </button>
 
-        {/* Tags/Categories - Collapsible */}
+        {}
         {showAdvanced && (
           <div className="community-filter-section" style={{ marginBottom: '12px' }}>
             <label className="community-filter-label" style={{ fontSize: 'var(--fs-sm)', marginBottom: '6px' }}>Popular Tags</label>
@@ -328,7 +328,7 @@ export default function CommunityFilters({
           </div>
         )}
 
-        {/* Active Filters Summary */}
+        {}
         {hasActiveFilters && (
           <div style={{
             marginTop: '12px',
@@ -388,4 +388,3 @@ export default function CommunityFilters({
     </div>
   );
 }
-
