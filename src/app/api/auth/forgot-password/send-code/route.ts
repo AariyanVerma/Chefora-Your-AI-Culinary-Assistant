@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     // Insert new reset code
     await sql`
       INSERT INTO password_reset_codes (user_id, email, code, expires_at)
-      VALUES (${user.id}, ${email.trim()}, ${code}, ${expiresAt})
+      VALUES (${user.id}, ${email.trim()}, ${code}, ${expiresAt.toISOString()})
     `;
 
     // Send password reset email
@@ -80,6 +80,7 @@ export async function POST(req: Request) {
     );
   }
 }
+
 
 
 

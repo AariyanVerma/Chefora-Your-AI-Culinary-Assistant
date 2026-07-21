@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     // Store reset token (we'll use the same table but mark it differently)
     await sql`
       INSERT INTO password_reset_codes (user_id, email, code, expires_at)
-      VALUES (${resetCode.user_id}, ${email.trim()}, ${resetToken}, ${tokenExpiresAt})
+      VALUES (${resetCode.user_id}, ${email.trim()}, ${resetToken}, ${tokenExpiresAt.toISOString()})
       ON CONFLICT (user_id, code) DO NOTHING
     `;
 
@@ -70,6 +70,7 @@ export async function POST(req: Request) {
     );
   }
 }
+
 
 
 
